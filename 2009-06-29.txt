@@ -1,0 +1,143 @@
+
+*HatadaGithub*[Hatena] はてなダイアリーの記事をgithubでバージョン管理する。
+
+
+** やったこと
+
+- はてなダイアリーライター(はてダラ)にローダ(はてダロ)を加えてgithubに上げた。
+-- [http://github.com/koseki/hatenadiary-writer/tree/master:title:bookmark]
+- Text::HatenaとWEBrickでプレビューサーバを実装した。
+- Rakeで更新環境を作った。
+- 最近書いた記事をgithubにコミットした。
+-- http://github.com/koseki/hatenadiary-koseki2/tree/master:title:bookmark]
+
+
+** はてダラ＋はてダロ
+
+外部ファイルではてなダイアリーを更新する、既存の素敵ツールがあるので使う。
+
+- [http://www.hyuki.com/techinfo/hatena_diary_writer.html:title:bookmark]
+- [http://d.hatena.ne.jp/rin_ne/20040825/p7:title:bookmark]
+
+ライターとローダーは両方使いたい。でないとブラウザから更新したときに困る。が、ローダの方はログイン処理が古くて動かなかった。
+
+コードが基本は一緒だったので、一つにまとめた。
+
+- [http://github.com/koseki/hatenadiary-writer/tree/master:title:bookmark]
+
+あと、何が更新されるかわからないと不安なので、diffを取る仕組みを追加したい。
+
+
+** インストール手順
+
+素のhw.plを使うこともできるが、Rakeでもうちょっと便利な環境を作った。
+
+- [http://github.com/koseki/hatenadiary-writer/tree/master:title:bookmark]
+
+のDownloadボタンでtgzかzipをダウンロード。適当なディレクトリに展開し、
+
+>||
+rake init
+||<
+
+で初期化。生成されたconfig.txtを編集してインストール完了。
+
+
+** プレビューサーバ
+
+>||
+rake server
+rake server@ポート番号
+||<
+
+でプレビューサーバが起動するようにした。デフォルトでは8080で起動。
+
+- http://localhost:8080/
+
+サーバはWEBrick。はてな記法のパーサには、Text::Hatenaを使わせてもらった。というかText::Hatenaがあったから作った。
+
+- [http://moonrock.jp/~don/ruby/text-hatena/README.html.ja:title:bookmark]
+
+プレビューは以下のような感じ。意外と役に立ってる。
+
+<img src="http://23.media.tumblr.com/vRhVKnWfEp9k7uuacFwpX9rro1_500.png" />
+
+リンクにtitle:bookmarkがそのまま付いてしまうのが問題。リンク記法が認識されてない。あとで検討。
+
+
+** Rakeタスク
+
+>||
+rake load@2009-06-30
+||<
+
+2009-06-30の記事を./text/2009-06-30.txtに保存する。
+
+>||
+rake update
+||<
+
+ちょっとした更新。
+
+>||
+rake release
+||<
+
+通常更新。
+
+その他README.rdoc参照。
+
+- [http://github.com/koseki/hatenadiary-writer/tree/master:title:bookmark]
+
+
+** 動機
+
+最近書いた、
+
+- [http://d.hatena.ne.jp/koseki2/20090530/JsIdiom:title:bookmark]
+- [http://d.hatena.ne.jp/koseki2/20090619/TraceProc:title:bookmark]
+- [http://d.hatena.ne.jp/koseki2/20090424/rsync:title:bookmark]
+- [http://d.hatena.ne.jp/koseki2/20090611/ModRewrite:title:bookmark]
+
+などの記事は、次のことを意識しながら書いていた。
+
+- ストックテキストとして書く。
+- 書きかけで公開し、反応を見ながら更新する。
+- 余計なことを書かない。自分で理解できるギリギリの記述で十分。YAGNI
+
+上の記事は、思ったよりも評判が良かったので、この方法が向いているかもしれない。心の中でこれをイテレーティブ・ブログライティングと呼んでいる(カッコイイ)。
+
+
+*** ストックテキスト
+
+ストックとフローについては以下参照。
+
+- [http://d.hatena.ne.jp/jouno/20030214/p2:title:bookmark]
+-- 記憶に残っているのはid:jounoさんのこの記事。2003年。懐かしい。
+- [http://d.hatena.ne.jp/otsune/20050630/p3:title:bookmark]
+-- 歴史
+- [http://june29.jp/2009/05/05/information-stock-and-flow/:title:bookmark]
+-- 最近また話題に。
+
+ブログに特別なインタフェースが無くても、ストック型のコンテンツを混ぜ込むことはできる。長いスパンで参照されるつもりで書き、同じ記事をメンテナンスし続ければいい。
+
+ただ、記事の更新履歴を残せないのが難点だ。ストックテキストには、いちいち(追記)などと書きたくない。Wikiを更新するように更新したい。
+
+どうしたらいいんだろう、と思っていたのだが、今の世界には github があった。
+
+
+*** 書きかけで公開する
+
+公開しないとモチベーションが上がらない。意識的に書きかけで公開するようにした。
+
+(自分が書くような記事ではなく)本当に重要なドキュメントなら、パッチを送ってもらってドキュメントを更新してもいい。半Wiki的に。
+
+ブログ記事の共同執筆は、記事がCodeReposのような公開リポジトリに入っていれば、簡単に実現できる。
+
+
+*** 動機まとめ
+
+ブログの記事も、ソフトウェアの開発と同じようにイテレーティブに開発し、バージョン管理するといいことがあると思う。
+
+
+というわけで、この記事は書きかけです。
