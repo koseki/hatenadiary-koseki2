@@ -1,9 +1,0 @@
-
-*SlowFindExec*[Unix] find -execをゆっくり実行する。
-
->||
-nice -19 find . -exec sleep 1 \; -exec echo {} \;
-nice -19 find . -exec usleep 500000 \; -exec echo {} \;
-||<
-
- -execは複数書ける。先行するexecが失敗すると残りは実行されないっぽい。
