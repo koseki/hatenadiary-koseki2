@@ -1,0 +1,10 @@
+
+*JsStringSplit* JavaScriptのString#splitについて書いた。
+
+引数に正規表現が使えないという話を書き足した。
+
+- [http://d.hatena.ne.jp/koseki2/20090530/JsIdiom:title:bookmark]
+
+以下の焼き直しだけど。忘れてた。
+
+- [http://d.hatena.ne.jp/koseki2/20080107/jssplit:title:bookmark]

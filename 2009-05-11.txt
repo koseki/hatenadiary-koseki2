@@ -1,0 +1,172 @@
+
+*NoUserGemInstall*[Ruby] gemをホームディレクトリにインストールしない設定。
+
+gem installでsudoを付け忘れると~/.gem/以下にgemがインストールされてしまう。予想外なgemを参照していたりして気持ち悪い。
+
+
+** アンインストール
+
+ --install-dirを付ける。
+
+>||
+$ gem uninstall activerecord --install-dir ~/.gem/ruby/1.8
+||<
+
+gemの一覧を得る方法は不明。gem list --install-dirはダメだった。ls -l ~/.gem/ruby/1.8/gems/で調べて消した。
+
+
+** ホームディレクトリにインストール禁止
+
+- [http://coderrr.wordpress.com/2009/03/16/protecting-your-gem-directory/:title:bookmark] コメント欄を参照
+
+rubygemsを 1.3.2(2009-04-15) 以降にアップデートする。バグフィックスがあるのでアップデートは必須。
+
+- [http://rubyforge.org/frs/shownotes.php?release_id=33411:title:bookmark]
+>||
+* --user-install
+  * `gem install --no-user-install` now works.  Patch #23573 by Alf Mikula.
+  * `gem uninstall` can now uninstall from ~/.gem.  Bug #23760 by Roger Pack.
+||<
+
+~/.gemrcにgem: --no-user-installを追加。一番最後の行に足した。他の行が:で始まっていても、gemの先頭にコロンは付けない。
+
+>||
+gem: --no-user-install
+||<
+
+これで、以下のようにインストールに失敗してくれるようになる。
+
+>||
+$ gem install rails
+ERROR:  While executing gem ... (Gem::FilePermissionError)
+    You don't have write permissions into the /opt/local/lib/ruby/gems/1.8 directory.
+||<
+
+安心してsudoを付け忘れられる。
+
+上のページには alias gem='sudo gem' というコメントも載っているが、やり過ぎだとおもうのでしない。
+
+
+
+*MacTokyoCabinet*[Mac][TokyoCabinet] Mac OSXにTokyoCabinetをインストールした。
+
+
+** ファーストトライ
+
+本体はportで入れた。(→ダメでした。後述)
+
+>||
+$ port search tokyocabinet
+tokyocabinet @1.4.5 (databases)
+    Tokyo Cabinet is a library of routines for managing a database.
+$ port search tokyotyrant
+tokyotyrant @1.1.14 (databases)
+    Tokyo Tyrant is the network interface for Tokyo Cabinet.
+
+$ sudo port install tokyocabinet
+$ sudo port install tokyotyrant
+||<
+
+Ruby API/クライアントは現時点でオフィシャルなgemは配布されてないみたい。
+
+>||
+# gem search --remote tokyocabinet
+
+*** REMOTE GEMS ***
+
+careo-tokyocabinet (1.21)
+
+# gem search --remote tokyotyrant
+
+*** REMOTE GEMS ***
+
+actsasflinn-ruby-tokyotyrant (0.1.5)
+careo-tokyotyrant (1.3.0.1)
+||<
+
+ソースにgemspecが付いてたのでgemをbuildして入れた。
+
+>||
+# wget http://tokyocabinet.sourceforge.net/rubypkg/tokyocabinet-ruby-1.23.tar.gz
+# tar xzf tokyocabinet-ruby-1.23.tar.gz
+# cd tokyocabinet-ruby-1.23
+# gem build tokyocabinet.gemspec
+# gem install tokyocabinet-1.23.gem
+
+# wget http://tokyocabinet.sourceforge.net/tyrantrubypkg/tokyotyrant-ruby-1.5.tar.gz
+# tar xzf tokyotyrant-ruby-1.5.tar.gz
+# cd tokyotyrant-ruby-1.5
+# gem build tokyotyrant.gemspec
+# gem install tokyotyrant-1.5.gem
+||<
+
+<strong>これでは全然ダメだった。</strong>Ruby bindingsに対して、portで入れた本体が古すぎた。プロトコルのバージョンが変わっているせいか、Tokyo TyrantのRubyクライアントがまともに動かなかった。
+
+
+** やり直し
+
+- [mixi] Tokyo Cabinetリリース報告 http://mixi.jp/view_bbs.pl?id=33580292&comm_id=3528783 
+
+port uninstallして、本体も最新版をソースから入れ直す。Tokyo Cabinet, Tokyo Tyrantとも普通に
+
+>||
+# ./configure
+# make
+# make install
+||<
+
+でインストールできるが、Tokyo Cabinetのmake installが終わった後じゃないとTokyo Tyrantはmakeできない。しばらく悩んだ。
+
+Ruby bindingsは、
+
+>http://mixi.jp/view_bbs.pl?id=33580292&comm_id=3528783>
+TC-rubyはRubyGemsのgemspecが同梱されているので、gemを作りたい人は作ってください。今のところ、二重管理が面倒なので、CPANやRubyForgeへのアップロードは予定していません。 
+<<
+
+ということなので、上記のままで大丈夫。
+
+
+
+** 実験
+
+>||
+require 'rubygems'
+require 'tokyotyrant'
+
+(c = TokyoTyrant::RDBTBL.new).open('127.0.0.1', 1978)
+c["a"] = {"aa" => "bb", "cc" => "dd" }
+
+qry = TokyoTyrant::RDBQRY.new(c)
+qry.addcond("aa", TokyoTyrant::RDBQRY::QCSTREQ, "bb")
+
+p qry.searchcount
+p qry.search
+p qry.searchget
+
+c.clear # データが全部消えるので要注意。
+
+p qry.searchcount
+p qry.search
+p qry.searchget
+
+c.close
+||<
+
+portで入れた状態では、
+
+- qry.searchcount が少ない値を返す。
+- qry.searchget が正しい値を返さない。
+- c.clear で止まってしまう。
+
+みたいな状況で正しく動作していないことに気づいた。
+
+ソースから入れ直して以下が出力されるようになった。たぶん正常。
+
+>||
+1
+["a"]
+[{"aa"=>"bb", "cc"=>"dd", ""=>"a"}]
+0
+[]
+[]
+||<

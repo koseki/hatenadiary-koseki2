@@ -1,0 +1,214 @@
+
+*JsIdiom*[JavaScript] JavaScriptでよく使う書き方。
+
+よく使うけど毎回忘れる。
+
+
+** 正規表現にマッチするかどうか。
+
+RegExp#testを使う。
+
+>|javascript|
+/abc/.test("abcdefg") // => true
+||<
+
+String#searchはマッチした位置を返す。マッチしない場合は-1。先頭にマッチすると0でfalseなので注意。真偽値が欲しい場合はString#searchを使わない。
+
+>|javascript|
+"abcdefg".search(/xxx/) // => -1
+"abcdefg".search(/def/) // => 3
+"abcdefg".search(/abc/) == false // => true
+||<
+
+
+** 正規表現の部分マッチを得る。
+
+部分マッチを得るには、RegExp#execかString#matchを使う。execとmatchの速度は大して変わらない。
+
+- [http://d.hatena.ne.jp/uupaa/20090112/1231759977:title:bookmark]
+
+マッチすることに確信が持てる場合、または例外がでても構わない場合は、
+
+>|javascript|
+var m = /ab(c+)/.exec("abcccd")[1]; // => ccc
+var m = "abcccd".match(/ab(c+)/)[1]; // => ccc
+||<
+
+これだと1文で書ける。マッチしないとnullが返るため、[1]で例外が出てしまう。Rubyのto_aみたいにnullを[]に変換できるといいんだけど。
+
+<strike>しょうがないので以下のようにする。1文にまとまらない。</strike>
+
+>|javascript|
+var m = /ab(c+)/.exec("abcccd");
+m = m && m[1];
+||<
+
+標準でないRegExp.$1は使わない。
+
+
+>http://b.hatena.ne.jp/entry/http://d.hatena.ne.jp/koseki2/20090530/JsIdiom#bookmark-user-dankogai:title>
+b:id:dankogai javascript:alert(("abcccd".match(/ab(e+)/)||[])[1]) // はいかが 
+<<
+
+うわあ、、ですよね。。かなり考えたんだけど出てきませんでした。ありがとうございます。というわけで……
+
+1文で部分マッチを返す。
+
+>|javascript|
+var m = (/ab(c+)/.exec("abcccd")||[])[1];
+var m = ("abcccd".match(/ab(c+)/)||[])[1];
+||<
+
+マッチしなかった場合の値はnullではなくundefinedになる。
+
+>|javascript|
+js> [][1] === undefined
+true
+js> [][1] === null
+false
+||<
+
+RegExpの挙動に合わせてnullにそろえるとか、、やり過ぎか。
+
+>|javascript|
+var m = (/ab(c+)/.exec("abcccd")||[null,null])[1];
+var m = ("abcccd".match(/ab(c+)/)||[null,null])[1];
+||<
+
+>http://b.hatena.ne.jp/entry/http://d.hatena.ne.jp/koseki2/20090530/JsIdiom#bookmark-user-Ooo:title>
+b:id:Ooo (/ab(c+)/.exec('abccc') || [])[1] || null; こうかすら?
+<<
+
+そのほうがずっといいですねー。
+
+
+** 全てのマッチした箇所を得る。
+
+gオプションを付けてString#matchを使う。
+
+>|javascript|
+var m = "abcdefabcdef".match(/abc/g); // => ["abc", "abc"]
+||<
+
+
+** マッチでループする。
+
+gオプションを付けてRegExp#execを使う。正規表現はリテラル(/.../g)ではなくnew RegExp()を使う。
+
+>|javascript|
+var myRe = new RegExp("ab*", "g");
+var str = "abbcdefabh";
+var myArray;
+while ((myArray = myRe.exec(str)) != null) {
+ var msg = "myArray[0] + " を見つけました。";
+  msg += "次のマッチは " + myRe.lastIndex + " からです。"
+  print(msg);
+}
+||<
+
+- [https://developer.mozilla.org/ja/Core_JavaScript_1.5_Reference/Global_Objects/RegExp/exec:title] このサンプルはリテラルを使っている。修正したのが上のソース。
+
+
+また、String#replaceの第二引数にfunctionを指定する形式でもループできる。
+
+>|javascript|
+var rex = new RegExp("ab(.)", "g");
+var replaced = "ab0ab1ab2".replace(rex, function(match0, match1, offset, original) {...})
+||<
+
+
+リテラルを使わないほうがいい理由は以下のとおり。
+
+
+** Firefoxの正規表現リテラルは、状態を持っている。(なにそれ こわい)
+
+Firefox,Opera,Chromeも。IEやSafariは違うみたい。以下のデモ参照。この記事を書くまで全然知らなかった。
+
+- [http://www.teria.com/~koseki/memo/javascript/regexp_static.html:title:bookmark]
+
+以下も参照。ブックマークコメントも。実用にはならなそうだけど、面白い。
+
+- [http://d.hatena.ne.jp/javascripter/20090113/1231863436:title:bookmark]
+
+というわけで、以下のルールを守らなければならない。
+
+
+** ループの中にgオプションが付いた正規表現リテラルを書かない。
+
+ループの中でg付きの正規表現をexecすると、無限ループになる可能性がある。
+
+>|javascript|
+// ブラウザによっては毎回先頭にマッチして無限ループになる。
+while(/ab(.)/g.exec("ab0ab1ab2")) {
+}
+
+
+// これだとどうか？while内でbreak/returnして途中で終わると、リテラルにその状態が残る。次にここを実行すると途中からループが始まる。
+// 対象の文字列を引数で取っているfunctionだったりすると非常にマズイ。デモのtest3参照。
+var re = /ab(.)/g;
+while(re.exec("ab0ab1ab2")) {
+}
+
+
+// new RegExp()が安心。見た目通りに動いてくれる。
+var re = new RegExp("ab(.)", "g");
+while(re.exec("ab0ab1ab2")) {
+}
+||<
+
+同様にfunctionの中にg付き正規表現リテラルを書くと、呼び出し毎に実行結果が変わる可能性がある。ただ、String#matchで使う分には問題無い気がする。
+
+>|javascript|
+function test() {
+  var m1 = /ab(.)/g.exec("ab0ab1ab2"); // Firefoxだとm1の値が呼び出し毎に変わる。 => 0 1 2
+  var m2 = "ab0ab1ab2".match(/ab(.)/g); // これなら大丈夫。 => [0,1,2] 
+}
+||<
+
+
+** 文字列を分割する。
+
+String#splitが使えるが、引数に正規表現を使ってはいけない。正規表現を指定した場合の挙動はブラウザごとに異なる。特にIEは全然違う。
+
+>|javascript|
+"abc<br>def<br><br>".split("<br>") 
+// => ["abc", "def", "", ""]
+
+"abc<br>def<br><br>".split(/<br>/) 
+// => ["abc", "def", "", ""] Firefox 3
+// => ["abc", "def"] IE6
+||<
+
+IE6でsplitに正規表現を指定すると、分割した要素の中から空文字列の要素を消してしまう。
+
+- http://aligach.net/diary/20060707.html
+
+正規表現を使いたい場合、クロスブラウザなsplitが以下に掲載されているのでこれを使う。
+
+- http://blog.stevenlevithan.com/archives/cross-browser-split
+
+splitの挙動を詳細に調べているテストが以下にある。
+
+- http://stevenlevithan.com/demo/split.cfm
+
+IE6,Firefox3,Safari3,Opera9,Chrome1,Chrome2で試した。
+
+- Opera9(Mac) 満点
+- Chrome1(Win) 満点
+- Chrome2(Win) 3個失敗 増えた？
+- Safari3(Mac) 7個失敗
+- Firefox3(Mac) 7個失敗
+- IE6(Win) 20個失敗
+
+
+** サンプルのJavaScriptをブラウザで実行してみる。
+
+昔つくったRealtime Eveluator。久々に触ったら楽しかったので、良かったら試してみてください。
+
+- [http://www.teria.com/~koseki/memo/javascript/realtime_eval.html:title:bookmark]
+-- evalにチェックを入れるとソースを書き換えながらリアルタイムに結果を表示できる。
+-- only onceは一回だけ実行。evalをチェックしていない時用。
+-- print()が使える。
+
+
+この記事は書きかけです。

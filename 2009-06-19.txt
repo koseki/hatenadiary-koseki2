@@ -1,0 +1,180 @@
+
+*TraceProc*[Unix] 実行中のアプリケーションを外から観察するコマンド。
+
+- strace
+-- システムコールをトレース。カーネルと何を話しているか。
+-- strace -p PID でプロセスにアタッチ。実行中のプロセスをトレース。
+-- [http://sourceforge.jp/magazine/03/10/28/1054253:title:bookmark]
+-- [http://jibun.atmarkit.co.jp/lskill01/rensai/fulinux/01/01.html:title:bookmark] - ふつうのLinuxプログラミング 青木峰郎 
+-- [http://jibun.atmarkit.co.jp/lskill01/rensai/fulinux/02/01.html:title:bookmark] 
+-- [http://x68000.q-e-d.net/~68user/unix/func.html:title:bookmark] - UNIX の部屋
+- ltrace
+-- 共有ライブラリの呼び出しをトレース。*.soと何を話しているか。
+-- ltrace -p PID でプロセスにアタッチ。実行中のプロセスをトレース。
+-- [http://0xcc.net/blog/archives/000103.html:title:bookmark]
+-- [http://www.linux.or.jp/JF/JFdocs/Program-Library-HOWTO/shared-libraries.html:title:bookmark] - Linux JF
+-- [http://www.hi-ho.ne.jp/babaq/linux/libtips.html:title:bookmark]
+- DTrace
+-- Macで使える。Linuxには無い。低負荷。運用中の本番環境で使える。スクリプト言語付き。
+-- [http://d.hatena.ne.jp/amachang/20080401/1207037832:title:bookmark]
+-- [http://www.itmedia.co.jp/enterprise/articles/0504/22/news030.html:title:bookmark]
+-- [http://www.atmarkit.co.jp/flinux/rensai/opensolaris07/opensolaris07a.html:title:bookmark]
+-- [http://wota.jp/ac/?date=20080319#p01:title:bookmark] Rubyで使えるプローブの一覧
+-- [http://wota.jp/ac/?date=20080620:title:bookmark] Linuxに移植する人がいない。
+-- [http://ph7spot.com/articles/getting_started_with_dtrace:title:bookmark]
+-- [http://jp.sun.com/communities/0703/feature02.html:title:bookmark] - 開発者ブライアン・キャントリルのインタビュー
+--- 「DTraceの素晴らしさは、システムに潜在する難問を解決することだけではなく、様々な制約がある業務中の本番環境で問題解決を実現できることだ。」
+- systemtap
+-- Linux用。DTraceと比べるとイマイチらしい。[http://blogs.sun.com/ahl/entry/dtrace_knockoffs:title] "like systemtap, but not crap"
+- lsof
+-- LiSt Open Files。どのファイルを使っているか調べられる。
+-- [http://ph7spot.com/articles/leveraging_lsof:title:bookmark]
+--- lsofはUnixで最も強力なコマンドの1つである。
+--- Unixでは全てがファイルだ。
+--- ディレクトリ、ネットワーク(ソケット、NFS)、ライブラリ(*.so,*.dylib)、デバイス(ドライブ、コンソール、マウス)、パイプ
+-- lsof -p PID
+-- lsof -c ruby
+-- lsof -u koseki
+-- lsof /var/log/apache2/access_log このファイルを開いているのはどのプロセスか。
+-- lsof /dev/sda1 このデバイスを開いているのはどのプロセスか。
+-- lsof -i ネットワーク接続一覧
+-- lsof -Pni ネットワーク接続一覧の速いバージョン。
+-- lsof -i @example.com ホスト
+-- lsof -i :80 ポート
+-- lsof -i :2000-3000 ポートの範囲
+-- lsof -i @example.com:80 ホスト＋ポート
+-- lsof -d24 ファイルデスクリプタの番号
+- gdb
+-- gdb -p PID でプロセスにアタッチ。btでスタックトレース表示。
+-- -gオプション付きでコンパイルしておく必要がある。(ここが敷居高い)
+-- [http://www.geekpage.jp/blog/?id=2007/1/17:title:bookmark]
+-- [http://blog.miraclelinux.com/yume/2006/09/post_fa59.html:title:bookmark]
+-- [http://d.hatena.ne.jp/moriyoshi/20070927/1190910311:title:bookmark]
+-- [http://d.hatena.ne.jp/ysano2005/20070211/1171195415:title:bookmark]
+-- [http://d.hatena.ne.jp/higepon/20090505/p1:title:bookmark]
+- tracef / hogetrace
+-- 関数呼び出しをトレースする。Linuxのみ。
+-- fileコマンドでstrippedと出なければ解析可能。-gオプション付きだと表示が増える。
+-- tracef -p PIDでプロセスにアタッチ。
+-- [http://binary.nahi.to/tracef/:title:bookmark] 類似ツールの一覧も。
+-- [http://d.hatena.ne.jp/yupo5656/20071008/p1:title:bookmark]
+- ftrace
+-- 関数呼び出しをトレースする。-finstrument-functions と -g オプションを付けてコンパイルする必要がある。
+-- [http://dsas.blog.klab.org/archives/51025093.html:title:bookmark]
+-- [http://dsas.blog.klab.org/archives/51024395.html:title:bookmark]
+- Windows
+-- [http://d.hatena.ne.jp/hasegawayosuke/20090622/p1:title:bookmark]
+- その他
+-- [http://i.loveruby.net/ja/misc/readingcode.html:title:bookmark] strace(Linux), ktrace(BSD), truss(Solaris)
+-- [http://0xcc.net/blog/archives/000077.html:title:bookmark] ptrace 
+
+
+** 使っている共有ライブラリを調べる。
+
+lddでアプリケーションや共有ライブラリが依存している共有ライブラリを調べられる。
+
+>||
+$ ldd /usr/bin/ruby
+        linux-gate.so.1 =>  (0x008bc000)
+        libruby1.8.so.1.8 => /usr/lib/libruby1.8.so.1.8 (0x008f7000)
+        libpthread.so.0 => /lib/i686/nosegneg/libpthread.so.0 (0x00a7d000)
+||<
+
+Mac OSXにlddは無い。代わりにotoolを使う。
+
+>||
+$ otool -L /opt/local/bin/ruby
+/opt/local/bin/ruby:
+        /opt/local/lib/libruby.dylib (compatibility version 1.8.0, current version 1.8.6)
+        /usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 111.1.3)
+        /usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 227.0.0)
+        /usr/lib/libgcc_s.1.dylib (compatibility version 1.0.0, current version 1.0.0)
+||<
+
+- ldd 実行ファイル|共有ライブラリ(*.so)
+- otool -L 実行ファイル|共有ライブラリ(*.dylib)
+- *.soはELF形式
+-- [http://www.linux.or.jp/JF/JFdocs/archive/ELF-HOWTO.html:title:bookmark]
+- *.dylibはMach-O(マーク・オー)形式
+-- [http://ja.wikipedia.org/wiki/Mach-O:title:bookmark]
+-- [http://jijixi.azito.com/cgi-bin/diary/index.rb?date=20061114:title:bookmark]
+-- [http://d.hatena.ne.jp/mteramoto/20070114/p2:title:bookmark] 
+-- [http://d.hatena.ne.jp/mteramoto/20070121/p1:title:bookmark] その2
+-- [http://d.hatena.ne.jp/mteramoto/20070121/p2:title:bookmark]
+- バイナリ形式はfileコマンドで調べられる。
+-- file /usr/local/bin/ruby1.8
+
+
+** Ruby
+
+*** スレッドダンプが見たい。
+
+スレッドが止まってる気がする時とか。
+
+- http://xray.rubyforge.org/
+
+xray。Javaと同様に、kill -QUITでスレッドダンプが見える。
+
+>||
+gem install xray
+||<
+
+- <a href="http://ph7spot.com/articles/caller_for_all_threads">caller_for_all_threads</a> 全スレッドのダンプを取るための拡張。Rubyのビルドが必要。もうちょっと調べる。
+
+
+*** 適当なタイミングでトレースしたい。
+
+5秒ごとに0.5秒トレースをオンにする。
+
+>|ruby|
+#! /usr/bin/env ruby
+
+require "tracer"
+
+Thread.start do
+  loop do
+    sleep 5
+    Tracer.on
+    sleep 0.5
+    Tracer.off
+  end
+end
+
+a = 0
+loop do
+  a = a + 1
+end
+||<
+
+*** シグナルを送ってトレースをオン・オフ。
+
+(書く予定)
+
+
+** プロセスと仲良くなる。
+
+htopを入れたら、急にプロセスが身近に思えるようになりました。htopサイコー。
+
+- [http://htop.sourceforge.net/:title:bookmark]
+-- 矢印キーで上下左右にスクロール。
+-- /でインクリメンタル検索。
+-- tでツリー表示。
+-- P/M/Tでソート。Iで反転。>でメニューからソート選択。
+-- kでメニューから送りたいシグナルを選べる。
+-- スペースキーでマークしてkでまとめてkill。
+-- Sで設定。
+--- Highlight program "basename" →オン
+--- Display threads in a different color →オン
+-- sでstrace表示。
+
+<img src="http://htop.sourceforge.net/htopxterm.gif" />
+
+あとはEC2で素のdebianを触るようになったのが結構良かった。はじめから動いてるプロセスが超少ないので、全体を把握した気持ちになれる。
+
+
+** 書籍
+
+Binary HacksとDebug Hacksがいいみたい。今なら読めるかも……！
+
+- [http://books.google.com/books?id=Jzv3L2j6oqsC&pg=PP1&dq=binary+hacks&as_brr=3&ei=Dig9SseDDIXWlQST6JC6BQ&hl=ja:title:bookmark]
+- [http://www.amazon.co.jp/gp/product/4873114047:title:bookmark]

@@ -1,0 +1,475 @@
+
+*TcrtestError*[TokyoCabinet] Tokyo TyrantでテーブルDBを指定するとtcrtestがエラーになる。
+
+Tokyo Cabinet / Tokyo Tyrant を使ってみているのだが、テーブルDBにTTのRuby binding経由で読み書きを繰り返していると、
+
+- エラーコードがずっとEMISC(9999)のままになる。
+- 結果がたまに空で返ってくる。
+-- 再接続すると正しい結果が返る。
+-- この時のエラーコードは大抵EMISCだがESUCCESSの場合も。
+
+という問題が発生して困っている。原因を絞り込むためtcrtestを試したら、同じようにmiscエラーが出た。
+
+- ttservctlをテーブルDBに修正してttserverを起動。
+- tcrtest misc 127.0.0.1 1000
+-- Linux(32bit) の場合、rnum=1000で2回に1回くらいmiscエラーが出る。
+-- Mac OSX(64bit) の場合、rnum>4095でmiscエラーが出る。
+
+自力で原因を調べると3年くらいかかりそうなので、mixiのサポートコミュニティで聞いてみることにする。
+
+- http://mixi.jp/view_bbs.pl?id=33263045&comm_id=3528783
+
+(追記) 回答いただけました。
+
+>>
+テーブルDBと固定長DBは純粋なkey/valueストレージではないため、それを前提としたtcrtestの各種テストは正常に動作しません。ドキュメントに特にその旨を書いていなかったので、申し訳ありません。
+TTにおけるテーブルDBのテストケースはtcrtest tableのみとなります。 
+<<
+
+うむー。やっぱりテストの内容をもうちょっと理解してから聞いたらよかったです。すいません。
+
+そして手がかりが無くなってしまった……。EMISC……何かのエラー……。
+(追記おわり)
+
+
+
+以下詳細。
+
+** 起動スクリプト
+
+ttservctlをコピーし、以下の修正を行った。
+
+- tchをtctに変更。
+- ログファイルを指定。
+
+>||
+# diff /usr/local/sbin/ttservctl ./ttservctl
+14c14
+< #logfile="$basedir/log"
+---
+> logfile="$basedir/log"
+21c21
+< dbname="$basedir/casket.tch#bnum=1000000"
+---
+> dbname="$basedir/casket.tct#bnum=1000000"
+||<
+
+** Fedora 8 (32bit)の場合。 (EC2 ami-5647a33f)
+
+EC2のFedora 8で試した。他にEC2のdebian、EC2じゃないCentOSも試したが似たような結果だった。エラーが出る頻度はFedoraよりも多い感じがしたけど気のせいかも(あいまい)。
+
+環境
+
+>||
+# ttserver --version
+Tokyo Tyrant version 1.1.28 (311:0.91) for Linux
+Copyright (C) 2006-2009 Mikio Hirabayashi
+
+# tctmgr --version
+Tokyo Cabinet version 1.4.23 (814:1.0) for Linux
+Copyright (C) 2006-2009 Mikio Hirabayashi
+
+# gcc --version
+gcc (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)
+
+# tcucodec conf
+myconf(version): 1.4.23
+myconf(sysname): Linux
+myconf(libver): 814
+myconf(formatver): 1.0
+myconf(prefix): /usr/local
+myconf(includedir): /usr/local/include
+myconf(libdir): /usr/local/lib
+myconf(bindir): /usr/local/bin
+myconf(libexecdir): /usr/local/libexec
+myconf(appinc): -I/usr/local/include
+myconf(applibs): -L/usr/local/lib -ltokyocabinet -lbz2 -lz -lrt -lpthread -lm -lc 
+myconf(bigend): 0
+myconf(usezlib): 1
+myconf(usebzip): 1
+sizeof(bool): 1
+sizeof(char): 1
+sizeof(short): 2
+sizeof(int): 4
+sizeof(long): 4
+sizeof(long long): 8
+sizeof(float): 4
+sizeof(double): 8
+sizeof(long double): 12
+sizeof(void *): 4
+sizeof(intptr_t): 4
+sizeof(size_t): 4
+sizeof(time_t): 4
+sizeof(off_t): 4
+sizeof(ino_t): 4
+sizeof(wchar_t): 4
+sizeof(sig_atomic_t): 4
+macro(CHAR_MAX): 127
+macro(SHRT_MAX): 32767
+macro(INT_MAX): 2147483647
+macro(LONG_MAX): 2147483647
+macro(LLONG_MAX): 9223372036854775807
+macro(FLT_MAX): 3.40282e+38
+macro(DBL_MAX): 1.79769e+308
+macro(LDBL_MAX): 1.18973e+4932
+macro(PATH_MAX): 4096
+macro(RAND_MAX): 2147483647
+sysconf(_SC_CLK_TCK): 100
+sysconf(_SC_OPEN_MAX): 1024
+sysconf(_SC_PAGESIZE): 4096
+stat(st_uid): 0
+stat(st_gid): 0
+stat(st_blksize): 4096
+||<
+
+TTを起動。
+
+>||
+# ./ttservctl start
+Starting the server of Tokyo Tyrant
+Executing: ttserver -port 1978 -dmn -pid /var/ttserver/pid -log /var/ttserver/log
+Done
+||<
+
+>||
+# tcrtest misc 127.0.0.1 1000
+<Miscellaneous Test>
+  host=127.0.0.1  port=1978  cnum=1  tout=0  rnum=1000
+
+writing:
+......................... (00000100)
+......................... (00000200)
+......................... (00000300)
+......................... (00000400)
+......................... (00000500)
+......................... (00000600)
+......................... (00000700)
+......................... (00000800)
+......................... (00000900)
+......................... (00001000)
+reading:
+tcrtest: (validation): error: 0: success
+random writing:
+tcrtest: (validation): error: 0: success
+word writing:
+.................... (00000041)
+random erasing:
+......................... (00000100)
+......................... (00000200)
+......................... (00000300)
+......................... (00000400)
+......................... (00000500)
+......................... (00000600)
+......................... (00000700)
+......................... (00000800)
+......................... (00000900)
+......................... (00001000)
+writing:
+.......tcrtest: tcrdbput: error: 9999: miscellaneous error
+erasing:
+........tcrtest: tcrdbout: error: 7: no record found
+random multi reading:
+......................... (00000100)
+......................... (00000200)
+......................... (00000300)
+......................... (00000400)
+......................... (00000500)
+......................... (00000600)
+......................... (00000700)
+......................... (00000800)
+......................... (00000900)
+......................... (00001000)
+script extension calling:
+......................... (00000100)
+......................... (00000200)
+......................... (00000300)
+......................... (00000400)
+......................... (00000500)
+......................... (00000600)
+......................... (00000700)
+......................... (00000800)
+......................... (00000900)
+......................... (00001000)
+checking versatile functions:
+......................... (00000100)
+......................... (00000200)
+......................... (00000300)
+......................... (00000400)
+......................... (00000500)
+......................... (00000600)
+......................... (00000700)
+......................... (00000800)
+......................... (00000900)
+......................... (00001000)
+record number: 0
+size: 14656
+time: 0.428
+error
+||<
+
+- tcrtest: (validation): error: 0: success は毎回発生。
+- tcrtest: tcrdbput: error: 9999: miscellaneous error は rnum=1000 で2回に1回くらい発生。
+
+ログは以下のとおり。2回実行して終了させた。
+
+>||
+2009-06-03T05:35:03-05:00       SYSTEM  --------- logging started [11085] --------
+2009-06-03T05:35:03-05:00       SYSTEM  process ID configuration: path=/var/ttserver/pid pid=11085
+2009-06-03T05:35:03-05:00       SYSTEM  server configuration: host=(any) port=1978
+2009-06-03T05:35:03-05:00       SYSTEM  opening the database: /var/ttserver/casket.tct#bnum=1000000
+2009-06-03T05:35:03-05:00       SYSTEM  service started: 11085
+2009-06-03T05:35:03-05:00       INFO    timer thread 1 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 1 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 2 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 3 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 4 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 5 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 6 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 7 started
+2009-06-03T05:35:03-05:00       INFO    worker thread 8 started
+2009-06-03T05:35:03-05:00       SYSTEM  listening started
+2009-06-03T05:39:07-05:00       INFO    connected: 127.0.0.1:36178
+2009-06-03T05:39:07-05:00       INFO    doing vanish command
+2009-06-03T05:39:08-05:00       INFO    doing sync command
+2009-06-03T05:39:08-05:00       INFO    doing optimize command
+2009-06-03T05:39:08-05:00       INFO    doing vanish command
+2009-06-03T05:39:08-05:00       INFO    connection finished
+2009-06-03T05:39:18-05:00       INFO    connected: 127.0.0.1:36179
+2009-06-03T05:39:18-05:00       INFO    doing vanish command
+2009-06-03T05:39:19-05:00       ERROR   do_put: operation failed
+2009-06-03T05:39:19-05:00       INFO    doing sync command
+2009-06-03T05:39:19-05:00       INFO    doing optimize command
+2009-06-03T05:39:19-05:00       INFO    doing vanish command
+2009-06-03T05:39:19-05:00       INFO    connection finished
+2009-06-03T05:41:30-05:00       INFO    signal interruption
+2009-06-03T05:41:30-05:00       SYSTEM  listening finished
+2009-06-03T05:41:31-05:00       SYSTEM  closing the database
+2009-06-03T05:41:31-05:00       INFO    worker thread 1 finished
+2009-06-03T05:41:31-05:00       INFO    worker thread 2 finished
+2009-06-03T05:41:31-05:00       INFO    worker thread 3 finished
+2009-06-03T05:41:31-05:00       INFO    worker thread 4 finished
+2009-06-03T05:41:31-05:00       INFO    worker thread 5 finished
+2009-06-03T05:41:31-05:00       INFO    worker thread 6 finished
+2009-06-03T05:41:31-05:00       INFO    worker thread 7 finished
+2009-06-03T05:41:31-05:00       INFO    worker thread 8 finished
+2009-06-03T05:41:31-05:00       INFO    timer thread 1 finished
+2009-06-03T05:41:31-05:00       SYSTEM  service finished
+2009-06-03T05:41:31-05:00       SYSTEM  --------- logging finished [11085] --------
+||<
+
+** Macの場合。
+
+環境
+
+>||
+# ttserver --version
+Tokyo Tyrant version 1.1.27 (310:0.91) for Mac OS X
+Copyright (C) 2006-2009 Mikio Hirabayashi
+
+# tctmgr --version
+Tokyo Cabinet version 1.4.23 (814:1.0) for Mac OS X
+Copyright (C) 2006-2009 Mikio Hirabayashi
+
+# gcc --version
+i686-apple-darwin9-gcc-4.0.1 (GCC) 4.0.1 (Apple Inc. build 5488)
+
+# tcucodec conf
+myconf(version): 1.4.23
+myconf(sysname): Mac OS X
+myconf(libver): 814
+myconf(formatver): 1.0
+myconf(prefix): /usr/local
+myconf(includedir): /usr/local/include
+myconf(libdir): /usr/local/lib
+myconf(bindir): /usr/local/bin
+myconf(libexecdir): /usr/local/libexec
+myconf(appinc): -I/usr/local/include
+myconf(applibs): -L/usr/local/lib -ltokyocabinet -lbz2 -lz -lpthread -lm -lc 
+myconf(bigend): 0
+myconf(usezlib): 1
+myconf(usebzip): 1
+sizeof(bool): 1
+sizeof(char): 1
+sizeof(short): 2
+sizeof(int): 4
+sizeof(long): 4
+sizeof(long long): 8
+sizeof(float): 4
+sizeof(double): 8
+sizeof(long double): 16
+sizeof(void *): 4
+sizeof(intptr_t): 4
+sizeof(size_t): 4
+sizeof(time_t): 4
+sizeof(off_t): 8
+sizeof(ino_t): 4
+sizeof(wchar_t): 4
+sizeof(sig_atomic_t): 4
+macro(CHAR_MAX): 127
+macro(SHRT_MAX): 32767
+macro(INT_MAX): 2147483647
+macro(LONG_MAX): 2147483647
+macro(LLONG_MAX): 9223372036854775807
+macro(FLT_MAX): 3.40282e+38
+macro(DBL_MAX): 1.79769e+308
+macro(LDBL_MAX): 1.18973e+4932
+macro(PATH_MAX): 1024
+macro(RAND_MAX): 2147483647
+sysconf(_SC_CLK_TCK): 100
+sysconf(_SC_OPEN_MAX): 256
+sysconf(_SC_PAGESIZE): 4096
+stat(st_uid): 0
+stat(st_gid): 0
+stat(st_blksize): 4096
+||<
+
+ttserverを起動。
+
+>||
+# ./ttservctl start
+Starting the server of Tokyo Tyrant
+./ttservctl: line 49: ulimit: open files: cannot modify limit: Invalid argument
+Executing: ttserver -port 1978 -dmn -pid /var/ttserver/pid -log /var/ttserver/log
+Done
+||<
+
+tcrtest miscを実行するとエラーになる。
+
+>||
+# tcrtest misc 127.0.0.1 5000
+<Miscellaneous Test>
+  host=127.0.0.1  port=1978  cnum=1  tout=0  rnum=5000
+
+writing:
+......................... (00000500)
+......................... (00001000)
+......................... (00001500)
+......................... (00002000)
+......................... (00002500)
+......................... (00003000)
+......................... (00003500)
+......................... (00004000)
+......................... (00004500)
+......................... (00005000)
+reading:
+tcrtest: (validation): error: 0: success
+random writing:
+tcrtest: (validation): error: 0: success
+word writing:
+.................... (00000041)
+random erasing:
+......................... (00000500)
+......................... (00001000)
+......................... (00001500)
+......................... (00002000)
+......................... (00002500)
+......................... (00003000)
+......................... (00003500)
+......................... (00004000)
+......................... (00004500)
+......................... (00005000)
+writing:
+......................... (00000500)
+......................... (00001000)
+......................... (00001500)
+......................... (00002000)
+......................... (00002500)
+......tcrtest: tcrdbput: error: 9999: miscellaneous error
+erasing:
+......................... (00000500)
+......................... (00001000)
+......................... (00001500)
+......................... (00002000)
+......................... (00002500)
+......tcrtest: tcrdbout: error: 7: no record found
+random multi reading:
+......................... (00000500)
+......................... (00001000)
+......................... (00001500)
+......................... (00002000)
+......................... (00002500)
+......................... (00003000)
+......................... (00003500)
+......................... (00004000)
+......................... (00004500)
+......................... (00005000)
+script extension calling:
+......................... (00000500)
+......................... (00001000)
+......................... (00001500)
+......................... (00002000)
+......................... (00002500)
+......................... (00003000)
+......................... (00003500)
+......................... (00004000)
+......................... (00004500)
+......................... (00005000)
+checking versatile functions:
+......................... (00000500)
+......................... (00001000)
+......................... (00001500)
+......................... (00002000)
+......................... (00002500)
+......................... (00003000)
+......................... (00003500)
+......................... (00004000)
+......................... (00004500)
+......................... (00005000)
+record number: 0
+size: 61728
+time: 3.798
+error
+||<
+
+- tcrtest: (validation): error: 0: success は毎回発生。
+- tcrtest: tcrdbput: error: 9999: miscellaneous error はrnumが4096から毎回発生するようだった。
+
+ログは以下のとおり。
+
+>||
+2009-06-03T19:17:55+09:00       SYSTEM  --------- logging started [2886] --------
+2009-06-03T19:17:55+09:00       SYSTEM  process ID configuration: path=/var/ttserver/pid pid=2886
+2009-06-03T19:17:55+09:00       SYSTEM  server configuration: host=(any) port=1978
+2009-06-03T19:17:55+09:00       SYSTEM  opening the database: /var/ttserver/casket.tct#bnum=1000000
+2009-06-03T19:17:55+09:00       SYSTEM  service started: 2886
+2009-06-03T19:17:55+09:00       INFO    timer thread 1 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 1 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 2 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 3 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 4 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 5 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 6 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 7 started
+2009-06-03T19:17:55+09:00       INFO    worker thread 8 started
+2009-06-03T19:17:55+09:00       SYSTEM  listening started
+2009-06-03T19:18:00+09:00       INFO    connected: 127.0.0.1:64081
+2009-06-03T19:18:00+09:00       INFO    doing vanish command
+2009-06-03T19:18:02+09:00       ERROR   do_put: operation failed
+2009-06-03T19:18:04+09:00       INFO    doing sync command
+2009-06-03T19:18:04+09:00       INFO    doing optimize command
+2009-06-03T19:18:04+09:00       INFO    doing vanish command
+2009-06-03T19:18:04+09:00       INFO    connection finished
+2009-06-03T19:18:06+09:00       INFO    signal interruption
+2009-06-03T19:18:06+09:00       SYSTEM  listening finished
+2009-06-03T19:18:06+09:00       SYSTEM  closing the database
+2009-06-03T19:18:06+09:00       INFO    worker thread 1 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 1 finished
+2009-06-03T19:18:06+09:00       INFO    worker thread 2 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 2 finished
+2009-06-03T19:18:06+09:00       INFO    worker thread 3 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 3 finished
+2009-06-03T19:18:06+09:00       INFO    worker thread 4 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 4 finished
+2009-06-03T19:18:06+09:00       INFO    worker thread 5 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 5 finished
+2009-06-03T19:18:06+09:00       INFO    worker thread 6 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 6 finished
+2009-06-03T19:18:06+09:00       INFO    worker thread 7 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 7 finished
+2009-06-03T19:18:06+09:00       INFO    worker thread 8 was canceled
+2009-06-03T19:18:06+09:00       INFO    worker thread 8 finished
+2009-06-03T19:18:06+09:00       INFO    timer thread 1 was canceled
+2009-06-03T19:18:06+09:00       INFO    timer thread 1 finished
+2009-06-03T19:18:06+09:00       SYSTEM  service finished
+2009-06-03T19:18:06+09:00       SYSTEM  --------- logging finished [2886] --------
+||<

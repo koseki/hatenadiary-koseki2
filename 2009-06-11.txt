@@ -1,0 +1,145 @@
+
+*ModRewrite*[Apache] mod_rewriteの考え方。
+
+- http://httpd.apache.org/docs/2.2/mod/mod_rewrite.html
+
+を見ながら。
+
+>>
+RewriteCond <span style="color:#FF9900;font-weight:bold;">(B)</span> <span style="color:#009900;font-weight:bold;">(C)</span> <span style="color:#9933FF;font-weight:bold;">[F1]</span>
+RewriteRule <span style="color:#FF0000;font-weight:bold;">(A)</span> <span style="color:#0000FF;font-weight:bold;">(D)</span> <span style="color:#FF0099;font-weight:bold;">[F2]</span>
+<<
+
+- URLが正規表現<span style="color:#FF0000;font-weight:bold;">(A)</span>にマッチし、かつ
+- 文字列<span style="color:#FF9900;font-weight:bold;">(B)</span>が条件<span style="color:#009900;font-weight:bold;">(C)</span>を満たす場合に、
+- URLを<span style="color:#0000FF;font-weight:bold;">(D)</span>に書き換える。
+
+というのが基本。
+
+
+** RewriteRule
+
+URLが<span style="color:#FF0000;font-weight:bold;">(A)</span>の正規表現にマッチしたら<span style="color:#0000FF;font-weight:bold;">(D)</span>で書き換える。
+
+正規表現<span style="color:#FF0000;font-weight:bold;">(A)</span>は、リライトを実行するかどうかの条件(真偽値)であって、置換 url =~ s/<span style="color:#FF0000;font-weight:bold;">(A)</span>/<span style="color:#0000FF;font-weight:bold;">(D)</span>/ ということでは<span style="font-weight:bold;">ない</span>。たとえば、以下のような正規表現でリライトされる。
+
+- [http://www.google.com/codesearch?hl=ja&lr=&q=rewriterule%5cs%5c.%5cs:title]
+>||
+# 1文字マッチしたらリライト実行。空文字列でなければ実行する。
+RewriteRule . index.php [L]
+||<
+
+- [http://www.google.com/codesearch?hl=ja&lr=&q=RewriteRule%5cs%5c%5e%5cs:title]
+>||
+# 先頭にマッチしたらリライト実行。常に実行する。
+RewriteRule ^ - [L]
+||<
+
+よく見かけるのは .* だが、$0で後方参照するのでなければ全体にマッチする必要はないと思う。先頭にマッチ^でも十分なはず。理由があるなら知りたい。
+
+- [http://www.google.com/codesearch?hl=ja&lr=&q=RewriteRule%5cs%5c.%5c*:title]
+>||
+# dispatch.phpへのアクセスでなければdispatch.phpにアクセスする。QSAでクエリー文字列を足す。.*で全体をマッチさせる必要ある？
+RewriteCond %{REQUEST_URI} !dispatch\.php$
+RewriteRule .* dispatch.php [L,QSA]
+||<
+>||
+# 認証ユーザを環境変数に設定。.*で全体をマッチさせる必要ある？
+RewriteEngine on
+RewriteRule .* - [E=REMOTE_USER:%{HTTP:Authorization},L] 
+||<
+
+^(.*)$も大量に見つかるが、カッコの意味はあるんだろうか。
+- [http://www.google.com/codesearch?hl=ja&lr=&q=RewriteRule%5cs%5c%5e%5c(%5c.%5c*%5c)%5c%24:title] 
+>||
+# .*も()も無駄では？
+RewriteRule ^(.*)$ dispatch.fcgi [QSA,L] 
+||<
+>||
+# .*も()も無駄では？
+RewriteRule ^(.*)$ ./inc/bx/php/UserFile.php?file=$1 
+||<
+
+$1の代わりに$0が使えるし、%{REQUEST_URI}が使える。
+- [http://www.google.com/codesearch?hl=ja&lr=&q=RewriteRule.*%5c%240:title]
+>||
+RewriteRule .* index.php/$0 [PT,L]
+||<
+
+- [http://www.google.com/codesearch?hl=ja&lr=&q=RewriteRule.*REQUEST_URI:title]
+>||
+# mod_balancerとの連携。ファイルが無かったらmongrel_clusterに送る。
+# .*も()も無駄では？
+RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ balancer://mongrel_cluster%{REQUEST_URI} [P,QSA,L]
+||<
+
+ちなみに、abでベンチマークを取ってみたが、^でも^(.*)でも速度はまったく変わらなかった。無意味な () はどうかと思うが .* は読みやすくていいのかも。
+
+
+<span style="color:#0000FF;font-weight:bold;">(D)</span>に指定できるのは
+
+- ファイルのパス /www/index.html
+- URLのパス /www/index.html ファイルのパスと区別がつかない。→/wwwがファイルシステムに存在するかどうかで判断。
+- 絶対URL http://www.example.com/example.html → ホスト名が一致したら取り除いてURLパスに。でなければリダイレクトかプロキシ。
+- ハイフン(置換しない) →フラグの操作だけを実行したい場合に使う。
+
+フラグ<span style="color:#FF0099;font-weight:bold;">[F2]</span>でURLの置換を超えた操作を指定できる。
+
+- L 打ち止め。このURLにはこれ以上RewriteRuleを適用しない。
+- R リダイレクト
+- P プロキシ
+
+とか。
+
+
+** RewriteCond
+
+正規表現<span style="color:#FF0000;font-weight:bold;">(A)</span>に追加する条件。複数個指定できる。
+
+- URLが<span style="color:#FF0000;font-weight:bold;">(A)</span>にマッチし、かつ、RewriteCondを全て満たしたら<span style="color:#0000FF;font-weight:bold;">(D)</span>に書き換える。
+- <span style="color:#FF9900;font-weight:bold;">(B)</span>はHTTPヘッダ、環境変数、正規表現<span style="color:#FF0000;font-weight:bold;">(A)</span><span style="color:#009900;font-weight:bold;">(C)</span>の後方参照 $1/%1 など。
+- <span style="color:#009900;font-weight:bold;">(C)</span>は正規表現、文字列の比較<=>、ファイルテスト(-f)など。 
+
+フラグ<span style="color:#9933FF;font-weight:bold;">[F1]</span>で条件の動作オプションを指定できる。
+
+- OR 通常ANDで接続するところをORでつなぐ。
+- NC 大文字小文字を区別しない。
+
+
+** RewriteRuleが連鎖すると、入力が空文字列になることがある。
+
+RewriteRuleでURLを空文字列に書き換えられる。
+
+>||
+RewriteRule .  ""            # URLが空文字列に書き換わる
+RewriteRule .  /abc.html [L] # 任意の1文字。このルールにはマッチしない。
+RewriteRule .* /xyz.html [L] # 0文字以上。これにマッチする。[L]で終了。
+||<
+
+一番上のRewriteRuleで空文字列になり、2行目にはマッチしない。3行目の/xyz.htmlにリクエストが送られる。
+
+>||
+RewriteRule ^ ""
+||<
+
+だけだと400 Bad Requestになっていた。RewriteLogで空文字列に書き換わっているのが確認できる。
+
+>||
+127.0.0.1 - - [14/Jun/2009:05:44:38 +0900] [default.local/sid#1008de948][rid#10096fe98/initial] (3) applying pattern '^' to uri '/index.html'
+127.0.0.1 - - [14/Jun/2009:05:44:38 +0900] [default.local/sid#1008de948][rid#10096fe98/initial] (2) rewrite '/index.html' -> ''
+127.0.0.1 - - [14/Jun/2009:05:44:38 +0900] [default.local/sid#1008de948][rid#10096fe98/initial] (2) local path result: 
+||<
+
+** REQUEST_FILENAMEのナゾ
+
+ドキュメントに%{REQUEST_FILENAME}はファイルシステムのフルパスだというようなことが書いてあるが正しくない。コンテキストによってREQUEST_FILENAMEの内容が変わる。らしい。
+
+バグトラックでは以前から言われている。
+
+- [https://issues.apache.org/bugzilla/show_bug.cgi?id=46376:title] 2008/12
+- [https://issues.apache.org/bugzilla/show_bug.cgi?id=45280:title] 2008/06
+- [https://issues.apache.org/bugzilla/show_bug.cgi?id=16402:title] 2003/01
+
+
+この記事は書きかけです。

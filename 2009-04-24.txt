@@ -1,0 +1,131 @@
+
+*rsync*[Unix] 地雷だらけのrsyncを理解する。
+
+- rsync -avz --exclude-from=pattern-file --delete SRC/ DEST
+- SRCの末尾に/をつける。たいてい必要。
+-- SRCスラッシュの有無は、<code>mv SRC DEST</code> と <code>mv SRC/* DEST</code> の違いと一緒。スラッシュの後ろに*が省略されているものと考える。
+-- DESTのスラッシュの有無は関係なし。
+- --dry-run(-n)をつけて試す。
+- SRC、DESTともローカルのディレクトリを指定して試す。
+- DESTはまず空ディレクトリで試す。DESTが同期済みだと何が更新されるのか正確にわからないので。
+- --list-onlyをつけてファイル一覧を得る。
+- DESTを省略してファイル一覧を得る。
+-- --list-onlyと同じ？
+- --deleteはDESTのファイルを根こそぎ削除する可能性がある。注意。
+- --delete-excludedは使わない。--deleteより更に危険。excludeで指定した上書きされたくないファイルを削除してしまう。
+-- 間違って運用しているサイトを丸ごと消したことがある。
+- cronでミラーリングする方法は以下を参照。リモートのauthorized_keysにcommand="..."を書く（＝特定のコマンドしか実行できない専用の鍵を作る）。
+-- [http://www2s.biglobe.ne.jp/~nuts/labo/inti/cron-rsync-ssh-nodaemon.html:title:bookmark]
+-- [http://www.banana-fish.com/~piro/20040609.html#p06:title:bookmark]
+-- [http://sonic64.com/2004-11-17.html:title:bookmark]
+-- [http://www.otsune.com/diary/2005/02/26/4.html#200502264:title:bookmark]
+-- rsync -avz --exclude-from=pattern-file --delete -e "ssh -i ~/.ssh/rsync" SRC/ USER@HOST:DEST
+
+
+** マニュアル
+
+- [http://x68000.q-e-d.net/~68user/unix/pickup?rsync:title:bookmark] 基本的な使い方。わかりやすい。
+- [http://www.infoscience.co.jp/technical/rsync/rsync.html:title:bookmark] マニュアル。わかりにくい。
+- [http://sial.org/howto/rsync/:title:bookmark] 英語。タイムアウトの指定方法とか。
+
+
+** SRCのスラッシュについて
+
+SRCの末尾につくスラッシュの有無で、動作が変わる。この挙動はmvコマンドに似ている。
+
+>||
+mv /dir1 /dir2
+||<
+
+とすると /dir2/dir1 が出来る。同じように
+
+>||
+rsync -avz /home/wwwuser/htdocs wwwuser@example.com:/home/wwwuser/htdocs
+||<
+
+とすると、リモートに/home/wwwuser/htdocs/htdocsが出来てしまう。これはやりたいことと違う。htdocsの中身を更新したいなら、
+
+>||
+rsync -avz /home/wwwuser/htdocs/ wwwuser@example.com:/home/wwwuser/htdocs
+||<
+
+のようにスラッシュが必要。<strong>htdocs/*のようにアスタリスクが省略されていると考えるとわかりやすい。</strong>
+
+
+** deleteについて
+
+- --deleteは、SRCに無いファイルをDESTから削除する。
+- --delete-excludedは、excludeパターンで除外されたファイルも削除する。
+
+ --deleteは、DESTのディレクトリ指定を間違えると悲惨なことになる。SRCのスラッシュの有無も重要。例えば、
+
+>||
+$ rsync -avz --delete ./new-dir/ /home/koseki # 危険！
+||<
+
+/home/kosekiの下にnew-dirを作りたいなら<strong>スラッシュを付けてはいけない</strong>。上のを実行すると/home/koseki以下のファイルが根こそぎ削除されてしまう。
+
+>||
+$ rsync -avz --delete ./new-dir  /home/koseki # 安全
+$ rsync -avz --delete ./new-dir/ /home/koseki/new-dir # 安全。これを使う。
+||<
+
+常に下の書き方をするのがいいと思う。スラッシュありで、DESTにSRCと同階層のディレクトリを指定する。
+
+
+** --delete-excludedについて
+
+ --delete-excludedは、SRCに無いファイル・ディレクトリに加えて除外されたファイル・ディレクトリも削除する。
+
+excludeパターンは、以下の性質が異なるファイルをまとめて扱う。
+
+- 不要なファイルを除外する。*~, .DS_Storeなど。→ 削除OK
+- 更新してほしくないから除外する。→ 削除NG
+
+ --delete-excludedを指定するなら、上のどちらの目的で除外しているのかを常に把握する必要がある。前者が削除されるのは構わないが、後者が削除されると悲惨。
+
+
+** excludeパターンファイル
+
+- excludeパターンファイルは上から順に、対象のパスにマッチするかどうかを試す。
+- マッチした時点でEXCLUDE/INCLUDEが決定する。それ以下のパターンは見ない。
+- 最後までマッチせずに抜けたらINCLUDE。
+- ディレクトリに除外パターンがマッチすると、そのディレクトリの内容も一緒に除外される。
+-- 除外ディレクトリ以下のファイルに対するマッチングは行われない。
+- *は/を含まないワイルドカード。
+- **は/を含むワイルドカード。
+
+例。
+
+>||
+- .svn/
+- *~
+- .DS_Store
++ /some
++ /some/path
++ /some/path/to
++ /some/path/to/include
++ /some/path/to/include/**
+- *
+||<
+
+/some/path/to/include以下のツリーは全部含む。それ以外は除外。.svnや*~のように全体で除外するパターンは最初の方に書く。
+
+<strong>この例は、cronで自動運転する時によく使う。</strong>excludeパターンはリモートのコマンドに影響しない。ルートは固定しつつ、更新したいディレクトリ以外全てを除外することで1つの鍵を複数の更新処理に使える。
+
+最近のバージョンでは、
+
+>||
++ dir/
++ dir/**
+- *
+||<
+
+を
+
+>||
++ dir/***
+- *
+||<
+
+ と書ける。INCLUDEパターン(+)じゃないと***は意味がないと思う(たぶん)。ディレクトリを除外すればそれ以下も除外されるので。

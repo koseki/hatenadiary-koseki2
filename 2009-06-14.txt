@@ -1,0 +1,28 @@
+
+*RailsLoggerFormat*[Rails] Rails2.xでログを独自のフォーマットで出力する。
+
+現時点(Rails2.3.2)では、BufferedLoggerのフォーマットは変えられないらしい。
+
+- [https://rails.lighthouseapp.com/projects/8994-ruby-on-rails/tickets/1307-bufferedlogger-should-support-message-formatting:title:bookmark]
+-- formatterを設定するパッチが出てるけど、まだ取り込まれてない。
+- [http://saikyoline.jp/weblog/2008/07/01/013418.html:title:bookmark]
+- [http://d.hatena.ne.jp/moro/20090313/1236937599:title:bookmark] 例外が渡されたらバックトレースを出力。
+-- [http://github.com/moro/logger_exception_format/tree/master:title:bookmark]
+
+上記の記事を参考に書いた(だいたいコピペした)モンキーパッチ。
+
+<script src="http://gist.github.com/129754.js"></script>
+
+BufferedLoggerに足したのは、
+
+- # Exception以下4行。
+- # Format以下1行。
+- SEV_LABEL以下。
+
+の3箇所。./config/initializer/buffered_logger_format.rb にコピーする。
+
+>||
+2009-06-15T03:06:11.401+09:00 [FATAL] Y2K destroy your DB.
+||<
+
+みたいな出力になる。

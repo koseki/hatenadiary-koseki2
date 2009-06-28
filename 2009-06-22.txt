@@ -1,4 +1,4 @@
-20090622
+
 *RailsSvn*[Rails] Rails の定数に SVN のリビジョン番号を設定する。
 
 config/environment.rb の末尾に以下を追加した。

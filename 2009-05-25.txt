@@ -1,0 +1,26 @@
+
+*EC2Ntp*[EC2] Amazon EC2 (Xen) では ntp の設定は不要。
+
+らしい。
+
+>http://developer.amazonwebservices.com/connect/thread.jspa?messageID=50437:title:bookmark>
+We use NTP to synchronise all our servers. I believe that the EC2 time inside instances is actually sourced from the host machine (there's some Xen setting for this which escapes me at the moment).
+<<
+
+ホスト側の全サーバでNTPを使っている。EC2のインスタンスはホストから時刻をソースされているので、インスタンス側で時刻を合わせる必要はない(設定しても効果がない)。
+
+>||
+# date 05251435
+Mon May 25 14:35:00 JST 2009
+# date
+Mon May 25 14:31:07 JST 2009
+||<
+
+>http://vcxzasdf.blogspot.com/2009/02/clock-synchronization-on-ec2-instance.html:title:bookmark>
+初期設定ではxenのguestはdom0から時刻を取得するようになっている模様。"/proc/sys/xen/independent_wallclock"でその状態を確認できる様子。==0だと、dom0から渡された時刻を使っている。
+<<
+
+>||
+# cat /proc/sys/xen/independent_wallclock 
+0
+||<
