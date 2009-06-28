@@ -1,0 +1,9 @@
+= hatenadiary-koseki2
+
+はてなダイアリーで書いた記事のソースです。
+
+* http://d.hatena.ne.jp/koseki2/
+
+はてなダイアリーライターを使用しています。
+
+* http://github.com/koseki/hatenadiary-writer/tree/master
