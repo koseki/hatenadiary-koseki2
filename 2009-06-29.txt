@@ -9,7 +9,7 @@
 - Text::HatenaとWEBrickでプレビューサーバを実装した。
 - Rakeで更新環境を作った。
 - 最近書いた記事をgithubにコミットした。
--- http://github.com/koseki/hatenadiary-koseki2/tree/master:title:bookmark]
+-- [http://github.com/koseki/hatenadiary-koseki2/tree/master:title:bookmark]
 
 
 ** はてダラ＋はてダロ
