@@ -23,11 +23,6 @@
 
 - [http://github.com/koseki/hatenadiary-writer/tree/master:title:bookmark]
 
-TODO 
-
-- diff。何が更新されるかわからないと不安なので。
-- ファイル名を日付＋名前にしたい。2009-06-29-HatenaGithub.txtとか。
-
 
 ** インストール手順
 
@@ -143,4 +138,15 @@ rake release
 ブログの記事も、ソフトウェアの開発と同じようにイテレーティブに開発し、バージョン管理するといいことがあると思う。
 
 
-というわけで、この記事は書きかけです。
+** TODO 
+
+- ファイル名を日付＋名前にしたい。2009-06-29-HatenaGithub.txtとか。
+
+実装済み
+
+- diff。何が更新されるかわからないと不安なので。
+-- 実装した。hw.pl -D日付 で手元のtxtと上がってる日記のdiffを表示。
+-- rake statusで、touch.txt以降に更新されたファイルを一覧表示するようにした。diffよりこっちをよく使うかも。
+
+
+この記事は <a href="http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-06-29.txt">github</a> で履歴を参照できます。
