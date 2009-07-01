@@ -1,7 +1,7 @@
 
-*JsIdiom*[JavaScript] JavaScriptでよく使う書き方。
+*JsIdiom*[JavaScript] JavaScript正規表現メモ。
 
-よく使うけど毎回忘れる。
+タイトル変えました。旧タイトル「JavaScriptでよく使う書き方」。よく使うけど毎回忘れる。
 
 
 ** 正規表現にマッチするかどうか。
@@ -27,6 +27,23 @@ String#searchはマッチした位置を返す。マッチしない場合は-1�
 
 - [http://d.hatena.ne.jp/uupaa/20090112/1231759977:title:bookmark]
 
+部分マッチを得るイディオム。マッチしなかったらundefined。
+
+>|javascript|
+var m = (/ab(c+)/.exec("abcccd")||[])[1];
+var m = ("abcccd".match(/ab(c+)/||[])[1];
+||<
+
+マッチしなかったらnullにしたい場合は、||nullを付ける。
+
+>|javascript|
+var m = (/ab(c+)/.exec("abcccd")||[])[1]||null;
+var m = ("abcccd".match(/ab(c+)/||[])[1]||null;
+||<
+
+以下変遷。
+
+
 マッチすることに確信が持てる場合、または例外がでても構わない場合は、
 
 >|javascript|
@@ -36,7 +53,7 @@ var m = "abcccd".match(/ab(c+)/)[1]; // => ccc
 
 これだと1文で書ける。マッチしないとnullが返るため、[1]で例外が出てしまう。Rubyのto_aみたいにnullを[]に変換できるといいんだけど。
 
-<strike>しょうがないので以下のようにする。1文にまとまらない。</strike>
+しょうがないので以下のようにする。1文にまとまらない。
 
 >|javascript|
 var m = /ab(c+)/.exec("abcccd");
@@ -93,10 +110,10 @@ var m = "abcdefabcdef".match(/abc/g); // => ["abc", "abc"]
 
 ** マッチでループする。
 
-gオプションを付けてRegExp#execを使う。正規表現はリテラル(/.../g)ではなくnew RegExp()を使う。
+gオプションを付けてRegExp#execを使う。正規表現は(/.../g)ではなくnew RegExp(/.../g)を使う。
 
 >|javascript|
-var myRe = new RegExp("ab*", "g");
+var myRe = new RegExp(/ab*/g);
 var str = "abbcdefabh";
 var myArray;
 while ((myArray = myRe.exec(str)) != null) {
@@ -106,18 +123,17 @@ while ((myArray = myRe.exec(str)) != null) {
 }
 ||<
 
-- [https://developer.mozilla.org/ja/Core_JavaScript_1.5_Reference/Global_Objects/RegExp/exec:title] このサンプルはリテラルを使っている。修正したのが上のソース。
-
+- [https://developer.mozilla.org/ja/Core_JavaScript_1.5_Reference/Global_Objects/RegExp/exec:title] 
 
 また、String#replaceの第二引数にfunctionを指定する形式でもループできる。
 
 >|javascript|
-var rex = new RegExp("ab(.)", "g");
+var rex = new RegExp(/ab(.)/g);
 var replaced = "ab0ab1ab2".replace(rex, function(match0, match1, offset, original) {...})
 ||<
 
 
-リテラルを使わないほうがいい理由は以下のとおり。
+リテラルをそのまま使わないほうがいい理由は以下のとおり。
 
 
 ** Firefoxの正規表現リテラルは、状態を持っている。(なにそれ こわい)
@@ -151,7 +167,7 @@ while(re.exec("ab0ab1ab2")) {
 
 
 // new RegExp()が安心。見た目通りに動いてくれる。
-var re = new RegExp("ab(.)", "g");
+var re = new RegExp(/ab(.)/g);
 while(re.exec("ab0ab1ab2")) {
 }
 ||<
@@ -164,6 +180,22 @@ function test() {
   var m2 = "ab0ab1ab2".match(/ab(.)/g); // これなら大丈夫。 => [0,1,2] 
 }
 ||<
+
+
+** new RegExp()の引数には正規表現リテラルを使う。
+
+>|ruby|
+new RegExp("\\s+", "g")
+||<
+よりも
+>|ruby|
+new RegExp(/\s+/g)
+||<
+の方がよい。エスケープが減る。コメントでjserさんに教えてもらった。
+
+EcmaScript仕様で、RegExpの第1引数に正規表現リテラルを取れることが書いてある。その場合、第2引数が指定されるとTypeErrorになる。
+
+- http://interglacial.com/javascript_spec/a-15.html#a-15.10.4
 
 
 ** 文字列を分割する。
@@ -211,4 +243,4 @@ IE6,Firefox3,Safari3,Opera9,Chrome1,Chrome2で試した。
 -- print()が使える。
 
 
-この記事は書きかけです。
+この記事は <a href="http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-05-30.txt">github</a> で履歴を参照できます。
