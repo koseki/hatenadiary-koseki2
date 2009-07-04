@@ -239,29 +239,32 @@ IE6,Firefox3,Safari3,Opera9,Chrome1,Chrome2で試した。
 
 - [http://xregexp.com/:title:bookmark]
 - [http://www.moongift.jp/2009/07/xregexp/:title:bookmark]
-- new XRegExp("pattern", "x");
-- 作者は上のクロスブラウザsplitを作っているSteven Levithanさん。
-- sフラグ .に何でもマッチする。
-- xフラグ 複数行・コメントあり。
+- XRegExp("pattern", "x");
+- /pattern/.addFlags("s");
+- 作者は上のクロスブラウザsplitを作っている方。Steven Levithanさん。
+- sフラグ …… .に何でもマッチする。
+- xフラグ …… 複数行・コメントあり。
 - 名前付きキャプチャ。
 - split他いくつかのクロスブラウザ対応を自動的に行う。
--- http://xregexp.com/cross_browser/
+-- http://xregexp.com/cross_browser/ 正規表現のブラウザ非互換についての、たぶん世界で一番詳しい記事。
 - 自前のフラグやエスケープシーケンスを簡単に足せる。
 -- <a href="http://blog.stevenlevithan.com/archives/xregexp-unicode-plugin">Unicode Plugin</a>
 
 >|http://xregexp.com/api/#XRegExp|
+// \\sのようにバックスラッシュは2つ書く必要がある。
+// 第一引数にリテラルも渡せるがflagは指定できない。
 var regex = XRegExp("(?<month> [0-9]+ ) [-/.\\s]  # month\n" +
                     "(?<day>   [0-9]+ ) [-/.\\s]  # day  \n" +
                     "(?<year>  [0-9]+ )           # year   ", "x");
 
+// 名前付きキャプチャ
+var match = regex.exec("04/20/2009");
+match.month; // -> 04
+
+// 名前で後方参照して置換
 var input = "04/20/2009";
 var output = input.replace(regex, "${year}-${month}-${day}"); // -> "2009-04-20"
-
-regex instanceof RegExp; // -> true
-regex.constructor == RegExp; // -> true
 ||<
-
-文字列で構築。バックスラッシュが必要。第一引数にリテラルも渡せるがflagは指定できない。
 
 addFlagでx,sフラグを追加できる。この場合はリテラルが使える。
 
