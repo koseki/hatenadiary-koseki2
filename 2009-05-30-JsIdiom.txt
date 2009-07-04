@@ -233,6 +233,46 @@ IE6,Firefox3,Safari3,Opera9,Chrome1,Chrome2で試した。
 - IE6(Win) 20個失敗
 
 
+** 正規表現ライブラリ
+
+*** XRegExp
+
+- [http://xregexp.com/:title:bookmark]
+- [http://www.moongift.jp/2009/07/xregexp/:title:bookmark]
+- new XRegExp("pattern", "x");
+- 作者は上のクロスブラウザsplitを作っているSteven Levithanさん。
+- sフラグ .に何でもマッチする。
+- xフラグ 複数行・コメントあり。
+- 名前付きキャプチャ。
+- split他いくつかのクロスブラウザ対応を自動的に行う。
+-- http://xregexp.com/cross_browser/
+- 自前のフラグやエスケープシーケンスを簡単に足せる。
+-- <a href="http://blog.stevenlevithan.com/archives/xregexp-unicode-plugin">Unicode Plugin</a>
+
+>|http://xregexp.com/api/#XRegExp|
+var regex = XRegExp("(?<month> [0-9]+ ) [-/.\\s]  # month\n" +
+                    "(?<day>   [0-9]+ ) [-/.\\s]  # day  \n" +
+                    "(?<year>  [0-9]+ )           # year   ", "x");
+
+var input = "04/20/2009";
+var output = input.replace(regex, "${year}-${month}-${day}"); // -> "2009-04-20"
+
+regex instanceof RegExp; // -> true
+regex.constructor == RegExp; // -> true
+||<
+
+文字列で構築。バックスラッシュが必要。第一引数にリテラルも渡せるがflagは指定できない。
+
+addFlagでx,sフラグを追加できる。この場合はリテラルが使える。
+
+>|http://xregexp.com/api/#addFlags|
+// This causes the regex literal's source to be recompiled as a new XRegExp
+var regex = /\w.\w/.addFlags("gs");
+||<
+
+バックラッシュで可読性が落ちるのがつらい。個人的にs,x,named captureはそれほど欲しいと思ったことがない。クロスブラウザ対応は気になる。
+
+
 ** サンプルのJavaScriptをブラウザで実行してみる。
 
 昔つくったRealtime Eveluator。久々に触ったら楽しかったので、良かったら試してみてください。
