@@ -33,10 +33,27 @@
 のDownloadボタンでtgzかzipをダウンロード。適当なディレクトリに展開し、
 
 >||
-rake init
+$ rake init
 ||<
 
-で初期化。生成されたconfig.txtを編集してインストール完了。
+で初期化。生成されたconfig.txtを編集する。通常はIDのみ書き換えればよい。
+
+>||
+$ rake load@2009-07-01
+||<
+
+として、text以下にファイルをダウンロードできればインストール完了。@の後ろには、公開済みの日記の日付を指定する。
+
+
+** ディレクトリ構成
+
+- hw.pl …… はてなダイアリーライター(+ローダ版)
+- Rakefile
+- config.yml …… 設定ファイル。rake initで生成。
+- cookie.txt …… クッキーファイル。rake initで生成。
+- text/ …… データディレクトリ。rake initで生成。.この中をgithubで管理する。
+
+config.yml、cookie.txt、textは.gitignoreに設定されているので、<a href="http://github.com/koseki/hatenadiary-writer/tree/master">hatenadiary-writer</a> をフォークして使うこともできる。
 
 
 ** プレビューサーバ
@@ -46,7 +63,7 @@ rake server
 rake server@ポート番号
 ||<
 
-でプレビューサーバが起動するようにした。デフォルトでは8080で起動。
+でプレビューサーバが起動する。デフォルトでは8080で起動。
 
 - http://localhost:8080/
 
@@ -64,26 +81,44 @@ rake server@ポート番号
 ** Rakeタスク
 
 >||
-rake load@2009-06-30
+$ rake load@2009-06-30
+$ rake load@20090630
+$ rake load@./text/2009-06-30-foobar.txt
 ||<
 
-2009-06-30の記事を./text/2009-06-30.txtに保存する。
+2009-06-30の記事を./text/2009-06-30.txtに保存する。@の後ろはTime.parseできるものなら何でもよい。
 
 >||
-rake update
+$ rake update
 ||<
 
 ちょっとした更新。
 
 >||
-rake release
+$ rake release
 ||<
 
 通常更新。
 
-その他README.rdoc参照。
+>||
+$ rake status
+||<
 
-- [http://github.com/koseki/hatenadiary-writer/tree/master:title:bookmark]
+更新対象のファイルを表示。
+
+>||
+$ rake diff
+||<
+
+更新対象のファイルと、公開されている日記のdiffを表示。
+
+>||
+$ rake diff@2009-07-01
+$ rake diff@20090701
+$ rake diff@./text/2009-07-01-foobar.txt
+||<
+
+2009-07-01*.txtと公開されている2009-07-01の日記のdiffを表示。
 
 
 ** 動機
@@ -140,13 +175,13 @@ rake release
 
 ** TODO 
 
-- ファイル名を日付＋名前にしたい。2009-06-29-HatenaGithub.txtとか。
-
 実装済み
 
 - diff。何が更新されるかわからないと不安なので。
 -- 実装した。hw.pl -D日付 で手元のtxtと上がってる日記のdiffを表示。
 -- rake statusで、touch.txt以降に更新されたファイルを一覧表示するようにした。diffよりこっちをよく使うかも。
+- ファイル名を日付＋名前にしたい。2009-06-29-HatenaGithub.txtとか。
+-- 実装した。
 
 
-この記事は <a href="http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-06-29.txt">github</a> で履歴を参照できます。
+この記事は <a href="http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-06-29-HatedaGithub.txt">github</a> で履歴を参照できます。
