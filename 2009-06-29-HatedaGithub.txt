@@ -2,13 +2,20 @@
 *HatadaGithub*[Hatena] はてなダイアリーの記事をgithubでバージョン管理する。
 
 
-** やったこと
+<a href="http://github.com/">github</a> や <a href="http://coderepos.org/share">code repos</a> のような公開リポジトリを使って、ブログに履歴管理機能を追加できるのではないかと考えた。この記事では、はてなダイアリーの記事をgithubでバージョン管理する方法を検討する。また、ブログ記事の履歴を公開するメリットについて考える。
 
-- はてなダイアリーライター(はてダラ)にローダ(はてダロ)を加えてgithubに上げた。
+この記事の履歴は、以下で参照できる。
+
+- http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-06-29-HatedaGithub.txt
+
+
+** これまでにやったこと
+
+- はてなダイアリーライター(はてダラ)にローダー(はてダロ)を加えてgithubに上げた。
 -- [http://github.com/koseki/hatenadiary-writer/tree/master:title:bookmark]
 - Text::HatenaとWEBrickでプレビューサーバを実装した。
 - Rakeで更新環境を作った。
-- 最近書いた記事をgithubにコミットした。
+- 最近書いた記事をgithubに上げた。
 -- [http://github.com/koseki/hatenadiary-koseki2/tree/master:title:bookmark]
 
 
