@@ -1,0 +1,189 @@
+
+*GithubApi* Github APIメモ (v2)
+
+
+** 概要
+
+ドキュメント
+
+- http://develop.github.com/
+
+フォーマットにxml,yaml,jsonを指定できる。以下ではXMLを指定する。ブラウザで見やすいので。
+
+- http://github.com/api/v2/:format (URLのベース)
+
+取得系のURLパターン。
+
+- ID不要
+-- repos/search/:keyword - リポジトリ検索
+-- repos/show/:user - ユーザのリポジトリ一覧
+-- repos/show/:user/:repo - リポジトリ情報
+-- commits/list/:user/:repo/:branch - 最近のコミット(コミットID、ルートツリーID)
+-- commits/list/:user/:repo/:branch/:path - 最近のコミット (コミットID、ルートツリーID)
+- ID必要
+-- commits/show/:user/:repo/:commit_sha - コミット詳細(diff)
+-- tree/show/:user/:repo/:tree_sha - ディレクトリの中身
+-- blob/show/:user/:repo/:tree_sha/:path - ファイルの中身
+-- blob/show/:user/:repo/:(tree,commit,blob)_sha - 生データ
+
+
+** オブジェクト
+
+- commitオブジェクト
+-- ID
+-- ツリーID
+-- parent IDs
+-- コミットログ
+-- githubのURL
+-- 作者
+-- 作成日
+-- コミッタ
+-- コミット日
+-- diff (追加・修正・削除)
+- treeオブジェクト(配列)の要素
+-- ID
+-- 名前
+-- タイプ(blob/tree)
+-- パーミッション
+- blobオブジェクト
+-- ID
+-- 名前
+-- サイズ
+-- パーミッション
+-- MIME-TYPE
+-- 中身
+
+
+** リポジトリAPI
+
+- http://develop.github.com/p/repo.html
+
+
+*** 検索
+
+- http://github.com/api/v2/xml/repos/search/ruby+testing (xml)
+- http://github.com/api/v2/yaml/repos/search/ruby+testing (yaml)
+- http://github.com/api/v2/json/repos/search/ruby+testing (json)
+
+
+*** 取得
+
+- http://github.com/api/v2/xml/repos/show/koseki ユーザのリポジトリ一覧
+- http://github.com/api/v2/xml/repos/show/koseki/hatenadiary-writer
+
+
+** コミットAPI
+
+- http://develop.github.com/p/commits.html
+
+
+*** ブランチへのコミット
+
+ブランチへのコミットログを取得する。
+
+>||
+commits/list/ユーザ/リポジトリ/ブランチ
+||<
+
+- http://github.com/api/v2/xml/commits/list/rails/rails/master
+- http://github.com/api/v2/xml/commits/list/koseki/hatenadiary-writer/master
+
+最新から最大30件。ページ送りはできないっぽい。parentで1つ前のコミットなら取得できる。
+
+
+*** ファイルへのコミット
+
+ファイルへのコミットログを取得する。
+
+>||
+commits/list/ユーザ/リポジトリ/ブランチ/パス
+||<
+
+- http://github.com/api/v2/xml/commits/list/rails/rails/master/.gitignore
+- http://github.com/api/v2/xml/commits/list/rails/rails/master/railties/bin/rails
+
+ディレクトリも指定できる。
+
+- http://github.com/api/v2/xml/commits/list/rails/rails/master/railties/bin/
+- http://github.com/api/v2/xml/commits/list/koseki/hatenadiary-writer/master/lib
+
+
+*** 単一のコミット取得
+
+IDでコミットを取得する。一覧で取得できる情報に加えて、変更箇所のdiffが得られる。
+
+>||
+commits/show/ユーザ/リポジトリ/コミットID
+||<
+
+- http://github.com/api/v2/xml/commits/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7
+
+
+** オブジェクトAPI
+
+- http://develop.github.com/p/object.html
+
+
+*** Tree
+
+>||
+tree/show/ユーザ/リポジトリ/ツリーID
+||<
+
+ドキュメントには書かれていないが、コミットIDも指定できた。
+
+- http://github.com/api/v2/xml/tree/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99 (ツリーID)
+- http://github.com/api/v2/xml/tree/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7 (コミットID)
+
+
+*** Blob
+
+>||
+blob/show/ユーザ/リポジトリ/ツリーID/パス
+||<
+
+- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99/.gitignore
+- ツリーIDで指定したディレクトリの直下のファイルしか取れない。
+-- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/1412aa44f43eda7d471b622081db36996ea37762/hatena_preview_server.rb (下層のツリーID/直下のパス) → OK
+-- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99/lib/hatena_preview_server.rb (ルートツリーID/下層のパス) → NG
+
+
+*** 生データ
+
+>||
+blob/show/ユーザ/リポジトリ/Blob・ツリー・コミットID
+||<
+
+- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7 (コミットIDを指定)
+
+
+** GithubのURL設計
+
+サイトのURL設計。だいたいこんな感じ。
+
+>||
+http://github.com/ユーザ/リポジトリ/オブジェクトタイプ/ID/パス
+||<
+
+- オブジェクトタイプ
+-- blog
+-- tree
+-- commit
+- ID
+-- コミットID
+-- ブランチ名
+-- タグ名
+
+>||
+http://github.com/ユーザ/リポジトリ/commit/コミットID
+http://github.com/ユーザ/リポジトリ/tree/コミットID
+http://github.com/ユーザ/リポジトリ/tree/コミットID/下位のディレクトリのパス
+http://github.com/ユーザ/リポジトリ/blob/コミットID/ファイルのパス
+||<
+
+- ツリーを表示するのにツリーのIDは指定しない。URLだけ見てtreeとcommit表示を切り替えられる。
+- APIとのズレ。コミットIDとパスだけ使ってツリーを取得するのは大変。
+-- コミットID → コミットオブジェクト → ルートツリーID → ルートツリーオブジェクト → パスを下降しながらツリーオブジェクトを順に取得 → 目的のツリーオブジェクトをゲット
+
+
+この記事は <a href="http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-07-14-GithubApi.txt">github</a> で履歴を参照できます。
