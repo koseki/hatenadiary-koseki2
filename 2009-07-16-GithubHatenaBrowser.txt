@@ -1,0 +1,70 @@
+
+*GithubHatenaBrowser* github上に裏はてなダイアリーを構築する。
+
+- [http://d.hatena.ne.jp/koseki2/20090629/HatadaGithub:title:bookmark]
+
+の続き。
+
+github にコミットしたはてなダイアリーの記事を直接表示するサーブレットを作った。
+
+
+** スクリーンショット
+
+hatenadiaryを含むプロジェクト一覧。descriptionにid:***が含まれていると上のほうに表示される。
+f:id:koseki2:20090717054815p:image
+
+ツリー表示。
+f:id:koseki2:20090717054813p:image
+
+コミット表示。
+f:id:koseki2:20090717054814p:image
+
+記事表示。
+f:id:koseki2:20090717054816p:image
+
+実用的かは微妙だけど、どっかのサーバで動かすといいかも。はてなの本物の記事と記事の履歴をシームレスにつなげられる。あとgithubで古いリビジョンにコメントが付けられるのは面白い気がする。
+
+
+** インストール
+
+- http://github.com/koseki/hatenadiary-writer/tree/master
+
+からダウンロード。zipを展開したら
+
+>||
+$ rake server
+||<
+
+で起動。rakeさえ動けば動くと思う。起動したら、
+
+- http://localhost:8080/github/
+
+にアクセス。ちなみに関係ないプロジェクトでもはてな風に表示できる。railsとか。
+
+- http://localhost:8080/rails/rails/
+
+ポート番号を指定したい時は、
+
+>||
+$ rake server@8081
+||<
+
+で起動する。
+
+
+** TODO
+
+- ルートディレクトリしか表示できない。階層を下れない。ひどい。
+- 記事以外のファイルの扱い。
+- githubはコミットにコメントが付けられる。コメント風表示したい。いつか。
+- サイドバー。検索フォームを付けたり。id入力欄。
+
+やらない気もする。git/githubの仕組みがちょっとわかったのが良かった。
+
+
+** 参考
+
+- [http://d.hatena.ne.jp/koseki2/20090714/GithubApi:title:bookmark]
+
+
+この記事は <a href="http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-07-16-GithubHatenaBrowser.txt">github</a> で履歴を参照できます。
