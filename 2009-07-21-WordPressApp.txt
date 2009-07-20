@@ -1,12 +1,12 @@
 
 *WordPressApp*[WordPress] WordPressをアプリケーションフレームワークとして使う。
 
-WordPressを使ってアプリケーションを開発した。これまでWordPressは使ったことがなかったが、単簡に機能を追加できた。
+WordPressを使ってアプリケーションを開発した。これまでWordPressは使ったことがなかったが、簡単に機能を追加できた。
 
 ブログ的なアプリケーションを効率よく開発できる環境になっていると思う。
 
 
-** ビュー: テーマをカスタマイズする。
+** ビュー: テーマをカスタマイズする
 
 - ./wp-conent/themes/defaultディレクトリを複製してオリジナルのテーマを作る。
 -- WordPressダッシュボード＞外観＞テーマ で作成したテーマを選択。
@@ -19,11 +19,13 @@ WordPressを使ってアプリケーションを開発した。これまでWordP
 
 ** モデル: オブジェクトとオブジェクトのキー
 
+オブジェクトとキー文字列。
+
 - 記事 …… 投稿スラッグ(ASCII。記事投稿画面で設定できる。URLに使用。)
 - タグ …… タグスラッグ(ASCII。タグ管理画面で設定できる。URLに使用。)
 - ユーザ …… loginネーム
 
-これらのキー文字列を使って、記事・タグ・ユーザ・コメント間に、ブラウザから編集可能なリレーションを作り出せる。
+これらのキーを使って、記事・タグ・ユーザ・コメント間に、ブラウザから編集可能なリレーションを作り出せる。
 
 - 例: 投稿スラッグ=status_koseki / ユーザ名=koseki
 - 例: タグスラッグ=permission_foo, permission=bar / ユーザ名=foo, bar
@@ -38,9 +40,7 @@ WordPressを使ってアプリケーションを開発した。これまでWordP
 - 記事のリビジョン管理。
 
 
-** コントローラ: リクエストを受けてテーマに渡るまで。
-
-大まかに言って。
+** コントローラ: リクエストを受けてテーマに渡るまで
 
 >||
 index.php
@@ -56,9 +56,9 @@ index.php
 
 ** 世界一簡単なWordPressクライアント
 
-大量にエントリーを作成する必要があったが、外部APIでは投稿スラッグの設定ができなかった。インポート・エクスポート機能では、一度取り込んだ記事を上書きできなかった。
+大量に記事を投稿する必要があったが、外部APIでは投稿スラッグの設定ができなかった。また、XMLインポート・エクスポート機能では、一度取り込んだ記事を上書きできなかった。
 
-仕方ないのでMechanizeを使うクライアントを作った。
+しかたないのでMechanizeを使うクライアントを作った。
 
 - http://gist.github.com/150470
 
@@ -87,7 +87,7 @@ entry.comment_status = false
 entry.save
 ||<
 
-ただしHTML依存。ダッシュボードのHTMLが変わると動かなくなる。あと最低限必要だった機能しか実装してない。削除とかできません。ひどい。使えない。
+ただしHTMLに依存する。ダッシュボードのHTMLが変わると動かなくなる。あと、最低限必要だった機能しか実装してない。削除とかできません。ひどい。使えない。
 
 
 ** プラグイン
@@ -202,10 +202,3 @@ $u = get_userdata($comment->user_id);
 ** この記事の履歴
 
 <script src="http://www.gmodules.com/ig/ifr?url=http://hosting.gmodules.com/ig/gadgets/file/100579023787743225942/github-recent-commits.xml&amp;up_user=koseki&amp;up_repo=hatenadiary-koseki2&amp;up_branch=master&amp;up_path=%2F2009-07-21-WordPressApp.txt&amp;synd=open&amp;w=600&amp;h=100&amp;title=&amp;border=%23ffffff%7C3px%2C1px+solid+%23999999&amp;output=js"></script>
-
-
-
-
-
-
-
