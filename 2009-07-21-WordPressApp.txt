@@ -1,0 +1,211 @@
+
+*WordPressApp*[WordPress] WordPressをアプリケーションフレームワークとして使う。
+
+WordPressを使ってアプリケーションを開発した。これまでWordPressは使ったことがなかったが、単簡に機能を追加できた。
+
+ブログ的なアプリケーションを効率よく開発できる環境になっていると思う。
+
+
+** ビュー: テーマをカスタマイズする。
+
+- ./wp-conent/themes/defaultディレクトリを複製してオリジナルのテーマを作る。
+-- WordPressダッシュボード＞外観＞テーマ で作成したテーマを選択。
+- index.php(トップページ)やsingle.php(記事単体表示)にPHPのコードを足す。
+-- 通常のブログとして機能させつつ、特定の記事にだけ機能を追加できる。
+-- 例: if (タグAが設定されていたら) { 本文の前後に別ファイルをインクルード }
+-- 例: if (投稿スラッグが正規表現にマッチ) { 特定ユーザのコメントを処理・出力 }
+-- 例: if (特定のユーザがコメント) { DBからデータを取得して出力 }
+
+
+** モデル: オブジェクトとオブジェクトのキー
+
+- 記事 …… 投稿スラッグ(ASCII。記事投稿画面で設定できる。URLに使用。)
+- タグ …… タグスラッグ(ASCII。タグ管理画面で設定できる。URLに使用。)
+- ユーザ …… loginネーム
+
+これらのキー文字列を使って、記事・タグ・ユーザ・コメント間に、ブラウザから編集可能なリレーションを作り出せる。
+
+- 例: 投稿スラッグ=status_koseki / ユーザ名=koseki
+- 例: タグスラッグ=permission_foo, permission=bar / ユーザ名=foo, bar
+- 例: タグスラッグ=include_items / 外部ファイル=$HOME/data/items.csv
+
+
+今回は使わなかったけど使えそうな機能。
+
+- 記事にカスタムフィールドを足せる。
+- カテゴリはツリー構造。
+- 公開予約。
+- 記事のリビジョン管理。
+
+
+** コントローラ: リクエストを受けてテーマに渡るまで。
+
+大まかに言って。
+
+>||
+index.php
+  wp-blog-header.php …… 設定ロード → wp() WPオブジェクト作成 → テーマ
+    wp-load.php …… 設定が無かったらエラー
+      wp-config.php …… ユーザ設定
+        wp-settings.php …… 環境構築 $wp = &new WP();
+          query.php …… クエリAPI
+          :
+    wp-include/template-loader.php …… テーマ処理に移行
+||<
+
+
+** 世界一簡単なWordPressクライアント
+
+大量にエントリーを作成する必要があったが、外部APIでは投稿スラッグの設定ができなかった。インポート・エクスポート機能では、一度取り込んだ記事を上書きできなかった。
+
+仕方ないのでMechanizeを使うクライアントを作った。
+
+- http://gist.github.com/150470
+
+たぶん他のどんなAPIを使うより簡単。
+
+>||
+url = "http://wordpress.local/"
+user = "admin"
+pass = "admin"
+  
+client = WpClient.new(url).login(user,pass)
+
+# 新規記事作成
+entry = client.get
+entry.title = "title"
+entry.content = "body"
+entry.post_name = "abcde"
+entry.save
+
+# 既存の記事を編集
+entry = client.get("http://記事URL")
+entry.date = Time.now
+entry.tags = "タグ1,タグ2"
+entry.ping_status = false
+entry.comment_status = false
+entry.save
+||<
+
+ただしHTML依存。ダッシュボードのHTMLが変わると動かなくなる。あと最低限必要だった機能しか実装してない。削除とかできません。ひどい。使えない。
+
+
+** プラグイン
+
+プラグインも作った。簡単なプラグインなら簡単。難しいプラグインは作ってないからわからない。
+
+以下は実際に使ったプラグイン。コメント欄にjQueryのstar-ratingで星をつけるUIを追加。出力時に★を画像で置換した。
+
+>|php|
+<?php
+/*
+Plugin Name: Star Comment
+Plugin URI: http://bluemark.co.jp/
+Description: コメントの★を画像に置き換えます。
+Author: KOSEKI Kengo
+Version: 1.0
+*/
+function filter_starcomment($content) {
+    return preg_replace('/★/u', '<img src="/common/js/star-rating/star_on.gif" />', $content);
+}
+
+add_filter('comment_text','filter_starcomment');
+?>
+||<
+
+wp-content/pluginsに入れて、ダッシュボード＞プラグイン でプラグインを有効にする。
+
+
+** API
+
+日本語版のAPIドキュメントは古かったりするみたい。
+
+- [http://codex.wordpress.org/Developer_Documentation:title:bookmark]
+-- [http://codex.wordpress.org/Function_Reference/:title:bookmark]
+-- [http://codex.wordpress.org/Plugin_API:title:bookmark]
+
+変数$postはthe_xxxという関数群で「今ターゲットにしている投稿」として扱われる。$_みたいなもの。テンプレートがループで扱いやすいようにか。一時変数で$postと書かないように気をつける。
+
+以下、使った関数といつか使うであろう関数の抜粋。
+
+
+*** 記事
+
+全postを取得。
+
+>|php|
+$allposts = get_posts('numberposts=-1');
+||<
+
+投稿スラッグからpostを取得。
+
+>|php|
+$tmp = get_posts("name=artist2347");
+echo $tmp[0]->post_name;
+||<
+
+get_postsの引数に何を書けるのか、詳しい説明が見つからない。ソースを見た方が早そう。query.phpに書いてある。
+
+
+*** コメント
+
+記事IDからコメント取得。
+
+>|php|
+$comments = get_comments("post_id=".$p->ID);
+||<
+
+コメントのフィールド
+
+- http://codex.wordpress.org/Function_Reference/get_comment
+-- comment_content で内容。
+-- user_id でユーザIDが取れる。
+
+
+*** タグ
+
+記事IDからタグ取得。
+
+>|php|
+$tags = wp_get_post_tags($p->ID);
+||<
+
+
+*** ユーザ
+
+ログインユーザ
+
+>|php|
+$u = wp_get_current_user();
+||<
+
+ログインしているか
+
+>|php|
+is_user_logged_in()
+||<
+
+ユーザの取得。
+
+>|php|
+$u = get_userdata($comment->user_id);
+||<
+
+- http://codex.wordpress.org/Function_Reference/get_userdata
+-- ID
+-- user_login
+-- display_name
+-- user_email
+-- user_url
+
+
+** この記事の履歴
+
+<script src="http://www.gmodules.com/ig/ifr?url=http://hosting.gmodules.com/ig/gadgets/file/100579023787743225942/github-recent-commits.xml&amp;up_user=koseki&amp;up_repo=hatenadiary-koseki2&amp;up_branch=master&amp;up_path=%2F2009-07-21-WordPressApp.txt&amp;synd=open&amp;w=600&amp;h=100&amp;title=&amp;border=%23ffffff%7C3px%2C1px+solid+%23999999&amp;output=js"></script>
+
+
+
+
+
+
+
