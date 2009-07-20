@@ -9,7 +9,7 @@ WordPressを使ってアプリケーションを開発した。これまでWordP
 ** ビュー: テーマをカスタマイズする
 
 - ./wp-conent/themes/defaultディレクトリを複製してオリジナルのテーマを作る。
--- WordPressダッシュボード＞外観＞テーマ で作成したテーマを選択。
+-- ダッシュボード＞外観＞テーマ で作成したテーマを選択。
 - index.php(トップページ)やsingle.php(記事単体表示)にPHPのコードを足す。
 -- 通常のブログとして機能させつつ、特定の記事にだけ機能を追加できる。
 -- 例: if (タグAが設定されていたら) { 本文の前後に別ファイルをインクルード }
@@ -28,7 +28,7 @@ WordPressを使ってアプリケーションを開発した。これまでWordP
 これらのキーを使って、記事・タグ・ユーザ・コメント間に、ブラウザから編集可能なリレーションを作り出せる。
 
 - 例: 投稿スラッグ=status_koseki / ユーザ名=koseki
-- 例: タグスラッグ=permission_foo, permission=bar / ユーザ名=foo, bar
+- 例: タグスラッグ=permission_foo, permission_bar / ユーザ名=foo, bar
 - 例: タグスラッグ=include_items / 外部ファイル=$HOME/data/items.csv
 
 
@@ -140,7 +140,7 @@ $allposts = get_posts('numberposts=-1');
 投稿スラッグからpostを取得。
 
 >|php|
-$tmp = get_posts("name=artist2347");
+$tmp = get_posts("name=postname1234");
 echo $tmp[0]->post_name;
 ||<
 
