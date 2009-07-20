@@ -1,5 +1,7 @@
 
-*GithubApi* Github APIメモ (v2)
+*GithubApi* Github APIメモ
+
+Github API (version 2)のメモ。主に情報取得系のAPIについて。
 
 
 ** 概要
@@ -15,19 +17,21 @@
 取得系のURLパターン。
 
 - ID不要
--- repos/search/:keyword - リポジトリ検索
--- repos/show/:user - ユーザのリポジトリ一覧
--- repos/show/:user/:repo - リポジトリ情報
--- commits/list/:user/:repo/:branch - 最近のコミット(コミットID、ルートツリーID)
--- commits/list/:user/:repo/:branch/:path - 最近のコミット (コミットID、ルートツリーID)
+-- repos/search/キーワード …… リポジトリ検索
+-- repos/show/ユーザ …… ユーザのリポジトリ一覧
+-- repos/show/ユーザ/リポジトリ …… リポジトリ情報
+-- commits/list/ユーザ/リポジトリ/ブランチ …… 最近のコミット(コミットID、ルートツリーIDが得られる)
+-- commits/list/ユーザ/リポジトリ/ブランチ/パス …… 最近のコミット (コミットID、ルートツリーIDが得られる)
 - ID必要
--- commits/show/:user/:repo/:commit_sha - コミット詳細(diff)
--- tree/show/:user/:repo/:tree_sha - ディレクトリの中身
--- blob/show/:user/:repo/:tree_sha/:path - ファイルの中身
--- blob/show/:user/:repo/:(tree,commit,blob)_sha - 生データ
+-- commits/show/ユーザ/リポジトリ/コミットID …… コミット詳細(diffを含む)
+-- tree/show/ユーザ/リポジトリ/ツリーID …… ディレクトリの中身
+-- blob/show/ユーザ/リポジトリ/ツリーID/パス …… ファイルの中身
+-- blob/show/ユーザ/リポジトリ/各種ID …… 生データ
 
 
 ** オブジェクト
+
+github APIで表現されるgitオブジェクト。
 
 - commitオブジェクト
 -- ID
@@ -40,18 +44,19 @@
 -- コミッタ
 -- コミット日
 -- diff (追加・修正・削除)
-- treeオブジェクト(配列)の要素
--- ID
--- 名前
--- タイプ(blob/tree)
--- パーミッション
-- blobオブジェクト
+- treeオブジェクト(ディレクトリ)
+-- 配列
+--- ID
+--- 名前
+--- タイプ(blob/tree)
+--- パーミッション
+- blobオブジェクト(ファイル)
 -- ID
 -- 名前
 -- サイズ
 -- パーミッション
--- MIME-TYPE
--- 中身
+-- MIMEタイプ
+-- ファイルの中身
 
 
 ** リポジトリAPI
@@ -61,15 +66,34 @@
 
 *** 検索
 
-- http://github.com/api/v2/xml/repos/search/ruby+testing (xml)
-- http://github.com/api/v2/yaml/repos/search/ruby+testing (yaml)
-- http://github.com/api/v2/json/repos/search/ruby+testing (json)
+リポジトリを検索する。
+
+>||
+/repos/search/キーワード
+||<
+
+- 例: http://github.com/api/v2/xml/repos/search/ruby+testing (xml)
+- 例: http://github.com/api/v2/yaml/repos/search/ruby+testing (yaml)
+- 例: http://github.com/api/v2/json/repos/search/ruby+testing (json)
 
 
 *** 取得
 
-- http://github.com/api/v2/xml/repos/show/koseki ユーザのリポジトリ一覧
-- http://github.com/api/v2/xml/repos/show/koseki/hatenadiary-writer
+特定のユーザのリポジトリ一覧を取得する。
+
+>||
+/repos/show/ユーザ
+||<
+
+- 例: http://github.com/api/v2/xml/repos/show/koseki
+
+リポジトリの情報を取得する。
+
+>||
+/repos/show/ユーザ/リポジトリ
+||<
+
+- 例: http://github.com/api/v2/xml/repos/show/koseki/hatenadiary-writer
 
 
 ** コミットAPI
@@ -85,8 +109,8 @@
 commits/list/ユーザ/リポジトリ/ブランチ
 ||<
 
-- http://github.com/api/v2/xml/commits/list/rails/rails/master
-- http://github.com/api/v2/xml/commits/list/koseki/hatenadiary-writer/master
+- 例: http://github.com/api/v2/xml/commits/list/rails/rails/master
+- 例: http://github.com/api/v2/xml/commits/list/koseki/hatenadiary-writer/master
 
 最新から最大30件。ページ送りはできないっぽい。parentで1つ前のコミットなら取得できる。
 
@@ -99,13 +123,13 @@ commits/list/ユーザ/リポジトリ/ブランチ
 commits/list/ユーザ/リポジトリ/ブランチ/パス
 ||<
 
-- http://github.com/api/v2/xml/commits/list/rails/rails/master/.gitignore
-- http://github.com/api/v2/xml/commits/list/rails/rails/master/railties/bin/rails
+- 例: http://github.com/api/v2/xml/commits/list/rails/rails/master/.gitignore
+- 例: http://github.com/api/v2/xml/commits/list/rails/rails/master/railties/bin/rails
 
 ディレクトリも指定できる。
 
-- http://github.com/api/v2/xml/commits/list/rails/rails/master/railties/bin/
-- http://github.com/api/v2/xml/commits/list/koseki/hatenadiary-writer/master/lib
+- 例: http://github.com/api/v2/xml/commits/list/rails/rails/master/railties/bin/
+- 例: http://github.com/api/v2/xml/commits/list/koseki/hatenadiary-writer/master/lib
 
 
 *** 単一のコミット取得
@@ -116,7 +140,7 @@ IDでコミットを取得する。一覧で取得できる情報に加えて、
 commits/show/ユーザ/リポジトリ/コミットID
 ||<
 
-- http://github.com/api/v2/xml/commits/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7
+- 例: http://github.com/api/v2/xml/commits/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7
 
 
 ** オブジェクトAPI
@@ -132,8 +156,8 @@ tree/show/ユーザ/リポジトリ/ツリーID
 
 ドキュメントには書かれていないが、コミットIDも指定できた。
 
-- http://github.com/api/v2/xml/tree/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99 (ツリーID)
-- http://github.com/api/v2/xml/tree/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7 (コミットID)
+- 例: http://github.com/api/v2/xml/tree/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99 (ツリーID)
+- 例: http://github.com/api/v2/xml/tree/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7 (コミットID)
 
 
 *** Blob
@@ -142,10 +166,10 @@ tree/show/ユーザ/リポジトリ/ツリーID
 blob/show/ユーザ/リポジトリ/ツリーID/パス
 ||<
 
-- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99/.gitignore
+- 例: http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99/.gitignore
 - ツリーIDで指定したディレクトリの直下のファイルしか取れない。
--- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/1412aa44f43eda7d471b622081db36996ea37762/hatena_preview_server.rb (下層のツリーID/直下のパス) → OK
--- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99/lib/hatena_preview_server.rb (ルートツリーID/下層のパス) → NG
+-- 例: http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/1412aa44f43eda7d471b622081db36996ea37762/hatena_preview_server.rb (下層のツリーID/直下のパス) → OK
+-- 例: http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/dfa37551f14888aceaffe508f584570db5668b99/lib/hatena_preview_server.rb (ルートツリーID/下層のパス) → NG
 
 
 *** 生データ
@@ -154,7 +178,17 @@ blob/show/ユーザ/リポジトリ/ツリーID/パス
 blob/show/ユーザ/リポジトリ/Blob・ツリー・コミットID
 ||<
 
-- http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7 (コミットIDを指定)
+- 例: http://github.com/api/v2/xml/blob/show/koseki/hatenadiary-writer/875fe21f2a29de85596a2c2edfad169df6ce04e7 (コミットIDを指定)
+
+
+** その他のAPI
+
+- ユーザ管理(User API)
+- イシュートラッキング (Issue API)
+- ネットワーク (Network API)
+- リポジトリの作成・削除・フォーク等
+
+などがある。
 
 
 ** GithubのURL設計
