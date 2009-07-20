@@ -67,4 +67,6 @@ $ rake server@8081
 - [http://d.hatena.ne.jp/koseki2/20090714/GithubApi:title:bookmark]
 
 
-この記事は <a href="http://github.com/koseki/hatenadiary-koseki2/commits/master/2009-07-16-GithubHatenaBrowser.txt">github</a> で履歴を参照できます。
+** この記事の履歴
+
+<script src="http://www.gmodules.com/ig/ifr?url=http://hosting.gmodules.com/ig/gadgets/file/100579023787743225942/github-recent-commits.xml&amp;up_user=koseki&amp;up_repo=hatenadiary-koseki2&amp;up_branch=master&amp;up_path=%2F2009-07-16-GithubHatenaBrowser.txt&amp;synd=open&amp;w=600&amp;h=100&amp;title=&amp;border=%23ffffff%7C3px%2C1px+solid+%23999999&amp;output=js"></script>
