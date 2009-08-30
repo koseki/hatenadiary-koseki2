@@ -233,6 +233,15 @@ IE6,Firefox3,Safari3,Opera9,Chrome1,Chrome2で試した。
 - IE6(Win) 20個失敗
 
 
+** 文字を置き換える。
+
+trはない。通常はString#replaceを使う。
+
+- [http://blog.livedoor.jp/dankogai/archives/51054229.html:title:bookmark] trの実装。行数を高速に数える話。
+-- [http://nanto.asablo.jp/blog/2008/05/23/3537480:title:bookmark] splitしても遅くないという話。テスト対象の文字列は小さい。
+-- [http://d.hatena.ne.jp/blanketsky/20080523/1211539780:title:bookmark] サイズによる影響。splitしても部分文字列がメモリを浪費することはない。
+
+
 ** 正規表現ライブラリ
 
 *** XRegExp
