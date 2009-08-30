@@ -5,10 +5,7 @@
 
 を見ながら。
 
->>
-RewriteCond <span style="color:#FF9900;font-weight:bold;">(B)</span> <span style="color:#009900;font-weight:bold;">(C)</span> <span style="color:#9933FF;font-weight:bold;">[F1]</span>
-RewriteRule <span style="color:#FF0000;font-weight:bold;">(A)</span> <span style="color:#0000FF;font-weight:bold;">(D)</span> <span style="color:#FF0099;font-weight:bold;">[F2]</span>
-<<
+[f:id:koseki2:20090831003240p:image]
 
 - URLが正規表現<span style="color:#FF0000;font-weight:bold;">(A)</span>にマッチし、かつ
 - 文字列<span style="color:#FF9900;font-weight:bold;">(B)</span>が条件<span style="color:#009900;font-weight:bold;">(C)</span>を満たす場合に、
@@ -84,7 +81,7 @@ RewriteRule ^(.*)$ balancer://mongrel_cluster%{REQUEST_URI} [P,QSA,L]
 - 絶対URL http://www.example.com/example.html → ホスト名が一致したら取り除いてURLパスに。でなければリダイレクトかプロキシ。
 - ハイフン(置換しない) →フラグの操作だけを実行したい場合に使う。
 
-フラグ<span style="color:#FF0099;font-weight:bold;">[F2]</span>でURLの置換を超えた操作を指定できる。
+フラグ<span style="color:#FF0099;font-weight:bold;">[F1]</span>でURLの置換を超えた操作を指定できる。
 
 - L 打ち止め。このURLにはこれ以上RewriteRuleを適用しない。
 - R リダイレクト
@@ -101,10 +98,111 @@ RewriteRule ^(.*)$ balancer://mongrel_cluster%{REQUEST_URI} [P,QSA,L]
 - <span style="color:#FF9900;font-weight:bold;">(B)</span>はHTTPヘッダ、環境変数、正規表現<span style="color:#FF0000;font-weight:bold;">(A)</span><span style="color:#009900;font-weight:bold;">(C)</span>の後方参照 $1/%1 など。
 - <span style="color:#009900;font-weight:bold;">(C)</span>は正規表現、文字列の比較<=>、ファイルテスト(-f)など。 
 
-フラグ<span style="color:#9933FF;font-weight:bold;">[F1]</span>で条件の動作オプションを指定できる。
+フラグ<span style="color:#9933FF;font-weight:bold;">[F2]</span>で条件の動作オプションを指定できる。
 
 - OR 通常ANDで接続するところをORでつなぐ。
 - NC 大文字小文字を区別しない。
+
+
+** ドメイン名の正規化
+
+www.example.jp と example.jp と www.example.com を example.com にリダイレクトしたい場合。名前ベースのバーチャルホストなら、
+
+>||
+<VirtualHost *:80>
+  ServerName  example.com
+  ServerAlias example.jp
+  ServerAlias www.example.com
+  ServerAlias www.example.jp
+
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST}   !^example\.com$ [NC]
+  RewriteRule ^/(.*)         http://example.com/$1 [L,R=301,NE]
+</VirtualHost>
+||<
+
+のように設定する。
+
+
+以下にApacheオススメの設定(以下ガイド版と呼ぶ)がある。上はこのガイド版を修正したもの。
+
+- [http://httpd.apache.org/docs/2.2/rewrite/rewrite_guide.html#canonicalhost:title:bookmark]
+
+>||
+RewriteCond %{HTTP_HOST}   !^fully\.qualified\.domain\.name [NC]
+RewriteCond %{HTTP_HOST}   !^$
+RewriteRule ^/(.*)         http://fully.qualified.domain.name/$1 [L,R,NE]
+||<
+
+
+各フラグの意味は、
+
+- NC 大文字小文字を無視
+- L 変換打ち切り(確定)
+- R リダイレクト
+- NE エスケープしない
+
+1行目、否定の ! がポイント。正規ドメイン名以外にマッチした場合に書き換える。否定パターンを書く方がシンプルで更新も楽。非正規ドメイン名をServerAliasで好きなだけ足せる。
+
+2行目はひとまず置いておいて、3行目。NEがポイント。NEを付けないと、
+
+- http://www.example.com/?a=%61 が、
+- http://example.com/?a=%2561
+
+にリダイレクトされてしまう。%が%25にエスケープされるのを止めるには、NEが必要。
+
+例えば、今日(2009-08-31)現在、
+
+- http://hatena.ne.jp/?a=%61 は、
+- http://www.hatena.ne.jp/?a=%2561
+
+にリダイレクトされる。NEの付け忘れでは。
+
+
+*** 修正箇所
+
+ガイド版から修正したのは、
+
+- 1行目正規表現の末尾に $ を足した。
+- 2行目を消した。
+- 3行目、Rのステータスコードを301(Moved Permanently)に設定した。
+
+の3カ所。
+
+
+*** 2行目の謎
+
+ガイド版の2行目がよくわからなかった。
+
+>||
+RewriteCond %{HTTP_HOST}   !^$
+||<
+
+空のHTTP_HOSTは置換対象から外している。
+
+HTTP_HOSTはどんな場合に空になるのか。ソースを見ると、
+
+- http://www.google.com/codesearch/p?hl=ja&sa=N&cd=1&ct=rc#W6G7kfsfmHo/httpd-2.2.4/modules/mappers/mod_rewrite.c&q=file:mod_rewrite.c&l=1828
+
+HTTP_HOSTには、Hostヘッダの値が設定されているようだ。
+
+考慮すべきこと。
+
+- HTTP/1.0ではHostヘッダは送られないかもしれない。
+-- IE2は送らなかった(らしい)
+- HTTP/1.1ではHostヘッダは必須。
+-- ただし「もし、リクエストされた URI がリクエストされているサービスのインターネットホスト名を含んでいなければ、Host ヘッダフィールドの値は空にしなければならない。」これはどういう場合？
+--- [http://www.studyinghttp.net/rfc_ja/rfc2616#Sec14.23:title] 14.23 Host
+-- 原文: If the requested URI does not include an Internet host name for the service being requested, then the Host header field MUST be given with an empty value.
+--- [http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.23:title] 14.23 Host
+- Request-URIがAbsoluteURIの場合、HTTP/1.1の仕様でhostヘッダは無視されるハズ。
+-- [http://www.studyinghttp.net/rfc_ja/rfc2616#Sec5.1.2:title] 5.1.2, 5.2
+- Hostヘッダを送らず、リダイレクトを正常に処理するクライアントがあった場合、HTTP_HOSTが空の場合を除外しないと、ループするかもしれない。
+
+特にそのドメインでアプリケーションを動かしている場合、Hostヘッダの有無を考慮したテストなんかできるはずがない。Hostヘッダがないリクエストには別のコンテンツを返しておくのがよい。
+
+という理由で、Apache設定の2行目は外した。
+
 
 
 ** RewriteRuleが連鎖すると、入力が空文字列になることがある。
