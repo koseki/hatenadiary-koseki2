@@ -1,0 +1,315 @@
+
+*ModDirRewrite*[Apache] mod_rewriteのコンテキストとサブリクエストについて調べた。
+
+
+** 発端
+
+WordPressでパーマリンクをカスタマイズすると、下の設定を.htaccessに書くように言われる。
+
+- [http://codex.wordpress.org/Using_Permalinks:title:bookmark]
+
+>||
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+||<
+
+これをhttpd.confに移すと以下のように書ける(と思っていた)。
+
+>||
+RewriteEngine On
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} !-f
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} !-d
+RewriteRule . /index.php [L]
+||<
+
+DirectoryIndexにindex.phpを足す。
+
+>||
+DirectoryIndex index.php index.html
+||<
+
+この設定で.htaccessとhttpd.confで動作が微妙に違うことに気づく。以下、
+
+- httpd.confを(S)
+- .htaccessを(D)
+
+と表記する。(S)はサーバコンテキスト、(D)はディレクトリコンテキスト。
+
+例。上の設定で http://example.com/xxx/ にアクセスした時、
+
+- /xxx/ディレクトリがない場合、
+-- (S) /index.phpを表示する。
+-- (D) /index.phpを表示する。
+- /xxx/ディレクトリがあるが、中にindex.phpもindex.htmlもない場合、
+-- <strong>(S) /index.phpを表示する。</strong>
+-- <strong>(D) Forbiddenになる。</strong>
+- /xxx/ディレクトリがあり、中にindex.htmlだけがある場合、
+-- <strong>(S) /index.phpを表示する。</strong>
+-- <strong>(D) /xxx/index.htmlを表示する。</strong>
+- /xxx/index.phpがある場合、
+-- (S) /xxx/index.phpを表示する。
+-- (D) /xxx/index.phpを表示する。
+
+この違いが全く理解できなかった。特に、httpd.confに設定すると、DirectoryIndexの2番目以降のエントリ(index.html)が無視されてしまうのが困った。
+
+RewriteLogでもピンとこなかったので、mod_dirにパッチをあてて調べた。
+
+
+** 前提
+
+mod_rewriteの基本については以下の記事を参照。
+
+- [http://d.hatena.ne.jp/koseki2/20090611/ModRewrite:title:bookmark]
+[f:id:koseki2:20090831003240p:image]
+
+設定のコンテキストとは？
+
+- [http://httpd.apache.org/docs/2.2/mod/directive-dict.html#Context:title:bookmark]
+-- サーバコンテキスト ... httpd.conf, &lt;VirtualHost&gt;
+-- ディレクトリコンテキスト ... .htaccess, &lt;Directory&gt;, &lt;Location&gt;...
+- [http://httpd.apache.org/docs/2.2/mod/mod_rewrite.html#rewriterule:title:bookmark]
+-- 下の方Per-directory Rewritesに解説がある。
+-- &lt;Directory&gt;にRewriteRuleを書くのは避けるべき。プレフィックス置換(RewriteBase)が複雑なので。
+-- &lt;Location&gt;にRewriteRuleを書く理由はない。書けるがサポートしない。
+-- per-server contextはバーチャルホスト設定を含む。
+
+
+** モジュールの実行順序について
+
+以下の記事を頼りにソースを読んだ。
+
+- [http://d.hatena.ne.jp/dayflower/20081029/1225266220:title:bookmark]
+- [http://dsas.blog.klab.org/archives/50626863.html:title:bookmark] 目次がたぶんだいたい呼び出し順。
+- [https://www.codeblog.org/blog/inoue/20060414.html#p01:title:bookmark]
+
+- [http://www.google.com/codesearch/p?hl=ja&sa=N&cd=1&ct=rc#W6G7kfsfmHo/httpd-2.2.4/modules/mappers/mod_rewrite.c&q=file:mod_rewrite.c%20httpd-2.2:title=mod_rewrite.c]
+-- サーバコンテキスト 
+--- ap_hook_translate_nameフック APR_HOOK_FIRST
+--- hook_uri2fileを実行
+-- ディレクトリコンテキスト
+--- ap_hook_fixupsフック APR_HOOK_FIRST
+--- hook_fixupを実行
+- [http://www.google.com/codesearch/p?hl=ja&sa=N&cd=1&ct=rc#W6G7kfsfmHo/httpd-2.2.4/modules/mappers/mod_dir.c&q=file:mod_rewrite.c%20httpd-2.2&l=241:title=mod_dir.c]
+-- ap_hook_fixupsフック APR_HOOK_LAST
+-- fixup_dirを実行
+
+簡単に書くと、
+
+- 最初の方のフックで、サーバコンテキストのRewriteRule適用。
+- (間に長い道のりを経て)
+- 最後の方のフックで、ディレクトリコンテキストのRewriteRuleとDirectoryIndex適用。
+
+そして、<strong>DirectoryIndexはindex.phpやindex.htmlを探すためにサブリクエストを発行し、サブリクエストにも各モジュールが適用される。</strong>
+
+図にするとこうなる。
+
+[f:id:koseki2:20090922194426p:image]
+
+
+
+** おかしな挙動の原因
+
+最初に書いた動作の違いはどこからくるのか。
+
+mod_dirが発行したサブリクエストをRewriteRuleが書き換えたとき(図の赤矢印)、
+
+- サーバコンテキストなら受け入れる。
+- ディレクトリコンテキストなら捨てる。
+
+という動作をしている。一つずつ見ていくと、
+
+- /xxx/ディレクトリがない場合、
+-- (S) /index.phpを表示する。
+-- (D) /index.phpを表示する。
+--- (S)(D)ともメインリクエストでリライトが完了する。!-fにも!-dにもマッチするため。サブリクエストは発行されない。
+- /xxx/ディレクトリがあるが、中にindex.phpもindex.htmlもない場合、
+-- (S) /index.phpを表示する。
+--- mod_dirがサブリクエスト(/xxx/index.php)
+--- mod_rewriteが書き換え(/xxx/index.php無し → /index.php)
+--- この結果を受け入れる。DirectoryIndexの残りのエントリーは無視される。
+-- (D) Forbiddenになる。
+--- mod_dirがサブリクエスト(/xxx/index.php)
+--- mod_rewriteが書き換え(/xxx/index.php無し → /index.php)
+--- mod_dirが結果を破棄
+--- mod_dirがサブリクエスト(/xxx/index.html)
+--- mod_rewriteが書き換え(/xxx/index.html無し → /index.php)
+--- mod_dirが結果を破棄
+--- /xxx/にそのままアクセス。Forbidden。
+- /xxx/ディレクトリがあり、中にindex.htmlだけがある場合、
+-- (S) /index.phpを表示する。
+--- 上と同じ。/xxx/index.phpから/index.phpにリライトされる。DirectoryIndex無視。
+-- (D) /xxx/index.htmlを表示する。
+--- mod_dirがサブリクエスト(/xxx/index.php)
+--- mod_rewriteが書き換え(/xxx/index.php無し → /index.php)
+--- mod_dirが結果を破棄
+--- mod_dirがサブリクエスト(/xxx/index.html)
+--- ファイルがあるので、RewriteRuleは適用されない。
+--- /xxx/index.htmlを表示。
+- /xxx/index.phpがある場合、
+-- (S) /xxx/index.phpを表示する。
+-- (D) /xxx/index.phpを表示する。
+--- (S)(D)ともmod_dirの最初のサブリクエスト(ファイルがあるのでRewriteRuleは適用されない)の結果を受け入れて/xxx/index.phpが表示される。
+
+
+** サーバコンテキストで%{DOCUMENT_ROOT}を指定することの問題
+
+mod_aliasはサーバコンテキストのリライトより後に実行される。
+
+- mod_rewrite(per-server) ... ap_hook_translate_nameフック APR_HOOK_FIRST
+- mod_alias ... apr_hook_translate_nameフック APR_HOOK_MIDDLE
+
+サーバコンテキストの時点で、mod_rewriteはパスが何になるかわからない。
+
+- <strong>サーバコンテキスト …… URIは知っているがパスを知らない。</strong>
+- <strong>ディレクトリコンテキスト …… パスは知っているがURIを知らない。</strong>
+
+ディレクトリコンテキストでは、書き換え後にサブリクエストを発行するため、RewriteBaseを使ってパスをURIに戻す必要がある。
+
+一方、サーバコンテキストでパスを知るには、サブリクエストを発行しなければならない。%{LA-F:variable}というのがその値。LA-FはLA-Uとほぼ同義でサブリクエストを発行して最終的な値を得る。ファイルのパスを知りたいときはLA-UではなくLA-Fを使う。
+
+- [http://httpd.apache.org/docs/2.2/mod/mod_rewrite.html#rewritecond:title:bookmark]
+
+%{LA-F:REQUEST_FILENAME}を実行するとサブリクエストが発行され、サブリクエストにはmod_rewriteが適用される。
+
+いかにも再帰がループしそうだが、ループ回避のためsubreq_okというマクロが使われている。サブリクエストではない場合、またはメインリクエストとサブリクエストのURIが一致しない場合のみ処理が許可される。
+
+>||
+/*
+ * check that a subrequest won't cause infinite recursion
+ *
+ * either not in a subrequest, or in a subrequest
+ * and URIs aren't NULL and sub/main URIs differ
+ */
+#define subreq_ok(r) (!r->main || \
+    (r->main->uri && r->uri && strcmp(r->main->uri, r->uri)))
+||<
+
+また、サブリクエストの回数と再帰レベルはLimitInternalRecursionで設定できる。デフォルトは回数・深さ共に10。
+
+- [http://httpd.apache.org/docs/2.0/ja/mod/core.html#limitinternalrecursion:title=LimitInternalRecursionディレクティブ:bookmark]
+
+ともあれサブリクエストを発生させてまで厳密なパスを知りたいわけではない。DOCUMENT_ROOTでもたいていは事足りるのではないか。Aliasを足したらAlias用のリライト設定も足せばいい。
+
+ディレクトリコンテキストでもAliasディレクトリ以下でリライトするなら、そこに.htaccessを足すなり&lt;Directory&gt;を足すなりしなければならない。話は一緒だ。
+
+
+** 改善策 - サーバコンテキスト編
+
+サーバコンテキストに設定した場合に困るのが、/xxx/index.htmlが表示できなくなるところ。DirectoryIndexの2番目以降の項目が無視されてしまう。
+
+そこで、DirectoryIndexをRewriteRuleで置き換える。
+
+>||
+RewriteEngine On
+
+# リクエストがディレクトリでindex.phpがあれば内部リダイレクトして終了。
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} -d
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.php -f
+RewriteRule . %{REQUEST_URI}/index.php [L]
+
+# リクエストがディレクトリでindex.htmlがあれば内部リダイレクトして終了。
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} -d
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.html -f
+RewriteRule . %{REQUEST_URI}/index.html [L]
+
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} !-f
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} !-d
+RewriteRule . /index.php [L]
+||<
+
+ただし、これでも空のディレクトリ/xxx/にアクセスするとサブリクエストが発生してしまう。DirectoryIndex設定を外しても、デフォルトのindex.htmlが設定されてしまって効果が無い。
+
+意地でもサブリクエストを出さない設定。
+
+>||
+# ディレクトリがあって、インデックスがない場合にForbidden。
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} -d
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.php !-f
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.html !-f
+RewriteRule . - [F]
+
+# Apache 2.1.1以上なら404も返せる。
+# RewriteRule . - [R=404]
+||<
+
+インデックス無しディレクトリに大量にアクセスがあるなら別だが、普通はメリット無さそう。Forbiddenの代わりに404を返したい時は使うかもしれない。
+
+mod_dirを外してしまうのはどうだろう？mod_dirを外せば、上の設定は不要になる。mod_dirのもう一つの機能、DirectorySlashもRewriteRuleで代用できる。
+
+>||
+RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI} -d
+RewriteRule ^/[^/]+$ %{REQUEST_URI}/ [L,R=301,NE]
+||<
+
+これもやり過ぎか。
+
+
+上で書いたとおり、Aliasで指定したディレクトリはDOCUMENT_ROOTにマッチしないので注意。Aliasのファイルの有無を調べるには、例えば
+
+>||
+Alias /xxx /path/to/alias/xxx
+
+# Aliasのファイルの有無を調べる例
+RewriteCond /path/to/alias${REQUEST_URI} -d
+RewriteCond /path/to/alias${REQUEST_URI}/index.php -f
+RewriteRule /xxx(/.*|$) ${REQUEST_URI}/index.php [L]
+
+# Aliasへのアクセスを%{DOCUMENT_ROOT}用のルールから除外する。ストッパー。
+RewriteRule /xxx(/.*|$) - [L]
+
+# この下にDOCUMENT_ROOT用のRewriteRule
+||<
+
+のようにする。
+
+Alias以下をリライトしない場合でも、DOCUMENT_ROOT以下のファイルを見に行ってしまわないように、最後のストッパーは書いた方がいい。
+
+
+** 改善策 - ディレクトリコンテキスト編
+
+ディレクトリコンテキストは効率が悪いが、動作はほぼ問題ない。可能なら.htaccessではなく&lt;Directory&gt;に書くこと。
+
+サーバコンテキストと同様、DirectoryIndexをRewriteRuleで代用して、サブリクエストを回避できる。
+
+>||
+RewriteBase /
+
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteCond %{REQUEST_FILENAME}/index.php -f
+RewriteRule . %{REQUEST_URI}/index.php [L]
+
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteCond %{REQUEST_FILENAME}/index.html -f
+RewriteRule . %{REQUEST_URI}/index.html [L]
+
+# !-dを外す選択肢もある。
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+||<
+
+
+** テスト環境 (Amazon EC2)
+
+- [http://gist.github.com/186628:title:bookmark]
+
+EC2でami-e048af89を起動、rootで000-start.shを実行すると、Apacheをビルドしログ出力用のパッチをあてたmod_dirが動くテスト環境をセットアップする。
+
+>||
+# cd /usr/local/src/modtest/
+# rake log
+||<
+
+でログをみながらhttp://localhost/xxx/にアクセス。
+
+>||
+# rake server_conf
+# rake directory_conf
+||<
+
+でサーバコンテキスト・ディレクトリコンテキストの切り替えを行う。
+
+
