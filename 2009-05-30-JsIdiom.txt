@@ -31,14 +31,14 @@ String#searchはマッチした位置を返す。マッチしない場合は-1�
 
 >|javascript|
 var m = (/ab(c+)/.exec("abcccd")||[])[1];
-var m = ("abcccd".match(/ab(c+)/||[])[1];
+var m = ("abcccd".match(/ab(c+)/)||[])[1];
 ||<
 
 マッチしなかったらnullにしたい場合は、||nullを付ける。
 
 >|javascript|
 var m = (/ab(c+)/.exec("abcccd")||[])[1]||null;
-var m = ("abcccd".match(/ab(c+)/||[])[1]||null;
+var m = ("abcccd".match(/ab(c+)/)||[])[1]||null;
 ||<
 
 以下変遷。
