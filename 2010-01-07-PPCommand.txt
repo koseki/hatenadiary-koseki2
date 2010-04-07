@@ -1,0 +1,174 @@
+
+*ppcommand* YAML/JSON/XMLをpp(pretty print)するコマンドを作った。
+
+rubyのppをコマンドにした。いろいろ読んでppで出力。
+
+- XMLやJSONに改行が入ってなくて読みにくいとき
+- 日本語がエスケープされててよめないとき
+- パースできるか確認したいとき
+
+などに。
+
+** インストール
+
+rubygemsが必要。
+- http://docs.rubygems.org/
+
+>||
+$ sudo gem install ppcommand
+||<
+
+** 使い方
+>||
+$ pp --help
+pp [options] [file|URI]
+    -y, --yaml                       parse YAML and pp.
+    -j, --json                       parse JSON and pp.
+    -x, --xml                        parse XML using REXML and pp.
+    -X, --xmlsimple                  parse XML using XMLSimple and pp.
+    -t, --text                       do not parse. print plain text.
+||<
+
+ファイル・URLを指定しなかった場合は、標準入力から読み込む。入力の種類をオプションで指定しなかった場合は、拡張子やcontent-typeから判断する。
+
+** 例
+
+>||
+# railsのデータベース設定ファイル(yaml)をパースして表示
+$ pp config/database.yml
+{"development"=>
+  {"socket"=>"/opt/local/var/run/mysqld/mysqld.sock",
+   "reconnect"=>false,
+   "encoding"=>"utf8",
+   "username"=>"root",
+   "adapter"=>"mysql",
+   "password"=>nil,
+   "database"=>"pptest_development",
+   "pool"=>5},
+ "production"=>
+  {"socket"=>"/opt/local/var/run/mysqld/mysqld.sock",
+   "reconnect"=>false,
+   "encoding"=>"utf8",
+   "username"=>"root",
+   "adapter"=>"mysql",
+   "password"=>nil,
+   "database"=>"pptest_production",
+   "pool"=>5},
+ "test"=>
+  {"socket"=>"/opt/local/var/run/mysqld/mysqld.sock",
+   "reconnect"=>false,
+   "encoding"=>"utf8",
+   "username"=>"root",
+   "adapter"=>"mysql",
+   "password"=>nil,
+   "database"=>"pptest_test",
+   "pool"=>5}}
+
+# はてブのJSON取得
+$ pp http://b.hatena.ne.jp/entry/json/http://www.hatena.ne.jp/
+{"eid"=>"370",
+ "title"=>"はてな",
+ "url"=>"http://www.hatena.ne.jp/",
+ "related"=>
+  [{"eid"=>"651",
+    "title"=>
+     "ソーシャル・ネットワーキング サービス [mixi(ミクシィ)]",
+    "url"=>"http://mixi.jp/",
+    "entry_url"=>"http://b.hatena.ne.jp/entry/mixi.jp/",
+    "count"=>"3152"},
+   {"eid"=>"398",
+    "title"=>"Google",
+    "url"=>"http://www.google.co.jp/",
+    "entry_url"=>"http://b.hatena.ne.jp/entry/www.google.co.jp/",
+    "count"=>"3913"},
+   {"eid"=>"18",
+    "title"=>"Yahoo! JAPAN",
+    "url"=>"http://www.yahoo.co.jp/",
+    "entry_url"=>"http://b.hatena.ne.jp/entry/www.yahoo.co.jp/",
+    "count"=>"6911"},
+   {"eid"=>"375",
+    "title"=>"livedoor",
+    "url"=>"http://www.livedoor.com/",
+    "entry_url"=>"http://b.hatena.ne.jp/entry/www.livedoor.com/",
+    "count"=>"1090"},
+   {"eid"=>"93",
+    "title"=>"はてなブックマーク",
+    "url"=>"http://b.hatena.ne.jp/",
+    "entry_url"=>"http://b.hatena.ne.jp/entry/b.hatena.ne.jp/",
+    "count"=>"3404"}],
+ "screenshot"=>
+  "http://screenshot.hatena.ne.jp/images/200x150/c/2/6/b/d/f015f87fcf44a513f4744
+d853fe22504bc3.jpg",
+ "entry_url"=>"http://b.hatena.ne.jp/entry/www.hatena.ne.jp/",
+ "bookmarks"=>
+  [{"user"=>"javaholic",
+    "timestamp"=>"2010/01/08 01:15:24",
+    "tags"=>["お気に入り"],
+    "comment"=>"はてなブックマークトップ"},
+   {"user"=>"rainbowfoop",
+    "timestamp"=>"2010/01/07 23:29:56",
+    "tags"=>["はてな"],
+    "comment"=>""},
+   {"user"=>"hosiuo",
+    "timestamp"=>"2010/01/06 17:10:05",
+    "tags"=>
+     ["はてな",
+      "ポータル",
+      "webサービス",
+      "検索",
+      "blog",
+      "bookmark"],
+    "comment"=>"今更ながらブックマーク"},
+:
+:
+   {"user"=>"masakiyo_tanaka",
+    "timestamp"=>"2005/02/10 22:42:33",
+    "tags"=>[],
+    "comment"=>""}],
+ "count"=>"3456"}
+
+# XMLをxml-simpleでパース
+$ pp -X http://www.google.co.jp/crossdomain.xml
+{"site-control"=>[{"permitted-cross-domain-policies"=>"by-content-type"}]}
+
+# XMLをREXMLでパースしてフォーマット
+$ pp http://www.google.co.jp/crossdomain.xml
+<?xml version='1.0'?>
+<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">
+<cross-domain-policy>
+  <site-control
+   permitted-cross-domain-policies = "by-content-type" />
+</cross-domain-policy>
+
+# XMLを標準入力から読んでパース
+$ svn info --xml | pp -X
+
+# twitterのパブリックタイムラインを表示
+$ pp http://twitter.com/statuses/public_timeline.json
+$ pp http://twitter.com/statuses/public_timeline.rss
+
+# -t(--text)で生のソースを出力
+$ pp -t http://twitter.com/statuses/public_timeline.json
+||<
+
+** alias
+
+~/.zshrc
+>||
+alias json='pp -j'
+alias xml='pp -x'
+alias yaml='pp -y'
+||<
+
+で、
+
+>||
+$ yaml config/database.yml
+||<
+
+とできる。
+
+** TODO
+
+- XPathに対応 (--xpath)
+- パースだけ行う (-q)

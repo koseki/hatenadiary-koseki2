@@ -1,0 +1,87 @@
+
+*GPLMemo* GPLメモ
+
+** 配布とソースコード
+
+- GPLの<b>派生物を渡した相手が希望するなら</b>、ソースコードを渡さなければならない。
+-- 不特定多数にソースを公開する義務はない。
+-- AさんがBさんにGPLのソースから作ったバイナリを渡すとき、Bさんに要求されたらソースも渡さなければならない。
+-- BさんがAさんから受け取ったバイナリを100人に売ったとき、その100人に要求されたらソースも渡さなければならない。
+-- 顧客の100人がバイナリを購入せず、BさんやAさんにソースを要求しても渡す必要はない。
+-- [http://www.ibm.com/developerworks/jp/opensource/library/itm-oss2/:title:bookmark]
+--- 「特にGPLのソフトウェアをビジネス用途などで第三者に販売・提供する場合、その第三者からソースコードの開示要求があればそれに応じなければなりません」
+- ソースを渡した相手に、再配布を許可しなければならない。
+-- 渡された相手が「再配布しなければならない」わけではない。
+- GPLのプログラムを修正し、サーバで動かして不特定多数にアクセスさせても、ソースを公開する必要はない。
+-- [http://ootsuka-houmu.com/service/gpl.html:title:bookmark] 
+--- 「ヴァージョン3（2007年）では、「コンピュータネットワーク上での単なるやりとりであって複製物の伝送を伴わない場合は、コンベイに当たらない。」と明文化されASPサービスが配布にあたらないことが明らかとなりました。」
+-- [http://sourceforge.jp/magazine/06/08/16/026213:title:bookmark] ASPも公開を義務づけるHPL(Honest Public License)
+
+** 何が派生物か
+
+- GPLのプログラムを実行時に動的に「リンク」したら、派生物。
+- execやforkで別プロセスでGPLのプログラムを実行する場合は、GPLでなくてもよい。
+-- ただし、GPLのプログラムと複雑な内部データを交換したりすると結合していると見なされる可能性がある。
+-- http://www.gnu.org/licenses/gpl-faq.ja.html#MereAggregation
+--- 「究極的には裁判官が決めること」→ 2つのプログラムが別々か一体かを厳密に決めるルールはない。
+--- 「メカニズム」と「セマンティクス」という2つの基準による。
+---- メカニズム：「パイプやソケット、コマンドライン引数」でコミュニケート → 2つの分離したプログラム。
+---- セマンティクス：「複雑な内部データ構造を交換」してコミュニケート → 1つに結合したプログラム。
+- JavaでGPLのjarファイルを利用したら、本体もGPL。
+-- [http://www.gnu.org/licenses/gpl-faq.ja.html#IfInterpreterIsGPL:title:bookmark]
+-- 「あなたのプログラムでGPLが適用されたPerlモジュールやJavaクラスを利用することにした場合、GPLと矛盾しないような形でプログラムを公開しなければならないということがありえます。」
+-- [http://www.gnu.org/licenses/lgpl-java.html:title:bookmark]
+- FlashでGPLのActionScriptを利用したら、本体もGPL。
+-- swfをウェブに載せるのはバイナリの配布なので、ソースも公開する必要がある。
+-- [http://www.libspark.org/wiki/saqoosha/FLARToolKit:title:bookmark]
+--- 「GPL を選択された場合、商用・非商用を問わず無料で使用可能です。ただしソフトウェアのバイナリ (SWF ファイル、AIR アプリ等) を第三者に公開するのであれば、そのソフトウェアを構成するすべてのソースファイルを GPL ライセンスで公開しなければなりません。FLARToolKit 移植元の ARToolKit が GPL で配布されているため、FLARToolKit も必然的に GPL での配布となります。」
+- WordPressのテーマを作成した場合、PHP部分はGPLでなければならない。画像やCSSはGPLでなくてよい。
+-- [http://ja.wordpress.org/2009/07/03/themes-are-gpl-too/:title:bookmark]
+-- [http://sakuratan.biz/archives/1091:title:bookmark]
+- インタプリタ自体がGPLでもプログラムはGPLでなくてよいが、インタープリタ言語でGPLのライブラリを使ったらGPLでなければならない。
+-- [http://www.gnu.org/licenses/gpl-faq.ja.html#IfInterpreterIsGPL:title:bookmark] プログラミング言語のインタープリタがGPLの下で公開されていた場合、そのインタープリタで解釈されるように書かれたプログラムのライセンスはGPLと矛盾してはならないのでしょうか?
+-- [http://dev.ariel-networks.com/Members/inoue/gpl-and-javascript:title:bookmark]
+-- [http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-list/34821:title:bookmark]
+---「Kaffe (GNU GPL な Java 仮想マシン + クラスライブラリ) 上でGNU GPL 非コンパチな Java プログラムを実行することはできない」？ → たぶんそんなことないはず……。
+--- 実行時にメモリ上でGPLの改変が行われたとして、それだけでライセンスに違反するという意味がわからない。配布した時に初めてライセンスに違反するのではないのか？GPLに違反するから公開できないという意味なのでは。
+-- [http://www.opensource.jp/gpl/gpl.ja.html.euc-jp:title:bookmark]
+--- 「複製や頒布、改変以外の活動はこの契約書ではカバーされない。それらはこの契約書の対象外である。『プログラム』を実行する行為自体に制限はない。」
+
+** GPLv3
+
+プロパゲートとコンベイ。
+
+- プロパゲート(propagate) 著作権利者に断りなくしてはダメな行為。
+- コンベイ(convey) プロパゲートのうちの配布の部分。複製したり、複製物をネットに置いたりすること。
+
+プロパゲートに該当しない場合はGPLv3が定める義務は生じない。プロパゲートには以下は含まない。
+
+- コンピュータ上で実行すること。
+- 内部的(個人や組織内)な改変。
+
+>>
+SFLCによれば、ここでいう「内部的」（private） とは、家庭内での個人的な行為だけでなく、企業内、企業グループ内、あるいは公共団体 等の組織内での行為も含む。
+
+したがって、企業が対象著作物を入手（受領）して、それをそのままあるいは改変して 自社内で使用する行為は、それがインターネット上でサービスを提供するようなシステム であっても、対象著作物を利用者がダウンロードできるようになっていなければ、プロパゲートに該当せず、GPLv3の定める各種の義務を負うことなく対象著作物を使用することができることになる。
+
+また、SFLCによれば、同一企業グループ間での行為も「内部的」とみなされる。例えば、 グループ内のシステム開発子会社がGPLv3プログラムを改変したソフトウェアを開発し、 それを親会社やグループ内の他の企業に配付して、グループ企業が使用するような場合も、 
+「内部的」な改変に当たり、プロパゲートに該当しない。政府の複数の省庁間でのプログラムの授受も同様に「内部的」な行為であり、プロパゲートに該当しない。
+
+これに対して、「プロパゲート」に該当する行為を行う者は、GPLv3に定める条件を遵守すべき義務を負うこととなる（第9条）。
+
+(GNU GPLv3 逐条解説書 第1版 p.27)
+<<
+
+日本の著作権法では、プログラムに関してプロパゲートとコンベイは一致する。(GNU GPLv3 逐条解説書 第1版 p.30)
+
+
+** LGPL
+
+- [http://d.hatena.ne.jp/firewood/20090109/1231433711:title:bookmark]
+- [http://d.hatena.ne.jp/xna/20081125/1227588198:title:bookmark]
+
+** その他参考
+
+- [http://ossipedia.ipa.go.jp/doc/187/:title:bookmark] GNU GPLv3 逐条解説書
+- [http://piro.sakura.ne.jp/latest/blosxom/mozilla/xul/2008-04-02_license.htm:title:bookmark]
+- [http://www.atmarkit.co.jp/news/200903/25/gpl.html:title:bookmark]
