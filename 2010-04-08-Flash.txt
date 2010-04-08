@@ -3,6 +3,7 @@
 
 - [http://code.google.com/p/swfobject/wiki/documentation:title:bookmark]
 - [http://mtl.recruit.co.jp/blog/2007/10/swfobject_v20.html:title:bookmark]
+- http://swfobject.googlecode.com/svn/trunk/swfobject/src/swfobject.js ソース
 
 ** 選択肢
 
@@ -11,36 +12,50 @@
 -- 選択肢2-1 ページ先頭でswfobjectを読み込む。ドキュメントで説明されている方法。
 -- 選択肢2-2 ページ末尾でswfobjectを読み込む。
 
+上の方がHTML的に(SEO的にも？)正しい。下の方がHTMLがシンプル。
+
+
 ** 選択肢1 static publishing methodを使う。
 
-- JavaScriptがない環境で動くかもしれない。
+JavaScriptなしでも表示可能なマークアップを目指すやり方。
+
+- HTMLの先頭でSWFObjectを読み込み、swfobject.registerObject(...)を実行する。
+- Flashを貼りたい位置に決められたマークアップを行う。
 - パフォーマンスがよい。
-- マークアップが標準準拠。だが見た目はクリーンではない。
+- マークアップが標準準拠。
+- 見た目はクリーンではない。
 -- 二重のオブジェクトタグ。
--- classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"
--- <!--[if !IE]>--> が2回登場。
-- 静的ならswfobjectは何をするのか。
--- マークアップだけでは解決できない問題を何か解決しているらしい。
--- HTMLの先頭でswfobjectを読み込み、swfobject.registerObject(...)を実行する。
-- JSがオフの場合はどうなるのか？
+-- classid="clsid<!-- -->:D27CDB6E-AE6D-11cf-96B8-444553540000"
+-- &lt;!--[if !IE]&gt;--> が2回登場。
+- 静的ならswfobjectは何をするのか？
+-- マークアップだけでは解決できない問題を解決しているらしい。
+
 
 ** 選択肢2-1 HTML先頭でdynamic publishing methodを使う。
 
-- 指定したidのdivが現れると、即座に中身を書き換えるようだ。
--- divに書いた代替コンテンツが不必要に見えてしまったりはしなそう。
-- 下の選択肢2-2と違い、ドキュメントに書かれている正統なやり方。
+JavaScriptでFlash用のHTMLソースを動的に生成するやり方。
+
+- HTMLの先頭でSWFObjectを読み込み、swfobject.embedSWF(...)を実行する。
+- CSSを生成して対象のdivを一旦隠し、Flashを貼ってからもう一度表示する仕組みになっている。
+-- 代替コンテンツが勝手に見えたりはしない。
+- 下の選択肢2-2と違い、ドキュメントに書かれている。正統なやり方。
+- <strong>SWFObjectのパッケージに含まれる expressInstall.swf を忘れずにアップロードする。</strong>
+
 
 ** 選択肢2-2 HTML末尾でdynamic publishing methodを使う。
 
-SWFObjectのドキュメントには、HTMLの先頭でswfobject.jsをロードすることと書かれている。が、HTMLの末尾にJavaScriptをまとめたいことも多い。そんなときは、以下のように書くとうまく動く。
+ドキュメントではHTMLの先頭でswfobjectを実行することになっているが、HTMLの末尾にJavaScriptをまとめたいことも多い。以下のように書くとうまく動いた。
 
 >||
 <html><body>
 
 <div id="(Flash表示領域のID)">
-<noscript>((1) JavaScriptがオフの場合の表示。ここでなくてもいい。)</noscript>
-((2) JavaScriptのオン・オフに関わらず下のスクリプトが実行されるまでの代替)
+  <noscript>((1) JavaScriptがオフの場合の表示)</noscript>
+  ((2) 下のスクリプトが実行されるまでの代替コンテンツ。一瞬見えてしまう。何も書かなくてもよい。)
 </div>
+
+:
+:
 
 <!-- ページの一番下で -->
 <script type="text/javascript" src="http://www.google.com/jsapi"></script>
@@ -51,7 +66,7 @@ google.load("swfobject", "2.2");
 
 if (! swfobject.hasFlashPlayerVersion("(必要なFlashのバージョン 10.0.0など)")) {
   document.getElementById("(Flash表示領域のID)").innerHTML = 
-    "((3) プラグインが古い場合の表示。(4) ユーザが expressInstall での更新を拒否した場合の表示)";
+    "((3) プラグインが古い場合の表示。また、(4) ユーザが expressInstall での更新を拒否した場合の表示)";
 }
 
 swfobject.embedSWF(
@@ -66,7 +81,7 @@ swfobject.embedSWF(
 </body></html>
 ||<
 
-最後にSWFObjectのパッケージに含まれる expressInstall.swf をアップロードして完了。
+最後に expressInstall.swf をアップロードして完了。
 
 どんな場合に何が表示されるのか。
 
@@ -76,8 +91,10 @@ swfobject.embedSWF(
 - (4) Flashプラグインが入っているが古く、ユーザがexpressInstall.swfでのアップデートを拒否した場合。→ 上と同じ。if内で指定したinnerHTMLの内容を表示。
 - (5) 新しいプラグインが入っている場合。または、expressInstall.swfで更新した場合。→ embedSWFで指定したswfを表示。
 
-ページの先頭でswfobjectを読みembedSWFを実行できる場合は、(2)を気にする必要は無いようだった。
+以下の環境で確認した。この他でもSWFObjectが動くなら動くのでは。
 
+- Win IE6,7,8, Firefox 3
+- Mac Firefox 3, Safari 4, Chrome 5, Opera 9
 
 *** バリエーション
 
