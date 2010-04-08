@@ -1,3 +1,88 @@
 
-*flash* Flashの貼り方。
+*flash* SWFObjectを使ったFlashの貼り方。
+
+- [http://code.google.com/p/swfobject/wiki/documentation:title:bookmark]
+- [http://mtl.recruit.co.jp/blog/2007/10/swfobject_v20.html:title:bookmark]
+
+** 選択肢
+
+- 選択肢1 static publishing methodを使う。
+- 選択肢2 dynamic publishing methodを使う。
+-- 選択肢2-1 ページ先頭でswfobjectを読み込む。ドキュメントで説明されている方法。
+-- 選択肢2-2 ページ末尾でswfobjectを読み込む。
+
+** 選択肢1 static publishing methodを使う。
+
+- JavaScriptがない環境で動くかもしれない。
+- パフォーマンスがよい。
+- マークアップが標準準拠。だが見た目はクリーンではない。
+-- 二重のオブジェクトタグ。
+-- classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"
+-- <!--[if !IE]>--> が2回登場。
+- 静的ならswfobjectは何をするのか。
+-- マークアップだけでは解決できない問題を何か解決しているらしい。
+-- HTMLの先頭でswfobjectを読み込み、swfobject.registerObject(...)を実行する。
+- JSがオフの場合はどうなるのか？
+
+** 選択肢2-1 HTML先頭でdynamic publishing methodを使う。
+
+- 指定したidのdivが現れると、即座に中身を書き換えるようだ。
+-- divに書いた代替コンテンツが不必要に見えてしまったりはしなそう。
+- 下の選択肢2-2と違い、ドキュメントに書かれている正統なやり方。
+
+** 選択肢2-2 HTML末尾でdynamic publishing methodを使う。
+
+SWFObjectのドキュメントには、HTMLの先頭でswfobject.jsをロードすることと書かれている。が、HTMLの末尾にJavaScriptをまとめたいことも多い。そんなときは、以下のように書くとうまく動く。
+
+>||
+<html><body>
+
+<div id="(Flash表示領域のID)">
+<noscript>((1) JavaScriptがオフの場合の表示。ここでなくてもいい。)</noscript>
+((2) JavaScriptのオン・オフに関わらず下のスクリプトが実行されるまでの代替)
+</div>
+
+<!-- ページの一番下で -->
+<script type="text/javascript" src="http://www.google.com/jsapi"></script>
+<script type="text/javascript">
+
+// Googleから読み込む。
+google.load("swfobject", "2.2"); 
+
+if (! swfobject.hasFlashPlayerVersion("(必要なFlashのバージョン 10.0.0など)")) {
+  document.getElementById("(Flash表示領域のID)").innerHTML = 
+    "((3) プラグインが古い場合の表示。(4) ユーザが expressInstall での更新を拒否した場合の表示)";
+}
+
+swfobject.embedSWF(
+  "((5) 表示したいFlash).swf",
+  "(Flash表示領域のID)", "(幅)", "(高さ)", "(必要なFlashのバージョン)", 
+  "(expressInstall.swfのパス。要アップロード)", 
+   (Flashに渡すパラメータ), (プラグイン用のパラメータ), (HTMLタグに追加する属性)
+);
+
+</script>
+
+</body></html>
+||<
+
+最後にSWFObjectのパッケージに含まれる expressInstall.swf をアップロードして完了。
+
+どんな場合に何が表示されるのか。
+
+- (1) JavaScriptがオフの場合。 → &lt;noscript&gt;を表示。
+- (2) JavaScriptがオンで、ページ下部のスクリプトがロード・実行されるまでの間。 → &lt;div&gt;の中身を表示。
+- (3) JavaScriptがオンで、Flashプラグインが入っていない場合。→ if内で指定したinnerHTMLの内容を表示。
+- (4) Flashプラグインが入っているが古く、ユーザがexpressInstall.swfでのアップデートを拒否した場合。→ 上と同じ。if内で指定したinnerHTMLの内容を表示。
+- (5) 新しいプラグインが入っている場合。または、expressInstall.swfで更新した場合。→ embedSWFで指定したswfを表示。
+
+ページの先頭でswfobjectを読みembedSWFを実行できる場合は、(2)を気にする必要は無いようだった。
+
+
+*** バリエーション
+
+Flashが表示される前に代替コンテンツが見えて構わないなら、&lt;div&gt;に直に書くほうがいい。(3)(4)のif文は不要になる。内容によっては &lt;noscript&gt; も不要かもしれない。
+
+
+
 
