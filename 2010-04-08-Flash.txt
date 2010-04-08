@@ -29,6 +29,7 @@ JavaScriptなしでも表示可能なマークアップを目指すやり方。
 -- &lt;!--[if !IE]&gt;--> が2回登場。
 - 静的ならswfobjectは何をするのか？
 -- マークアップだけでは解決できない問題を解決しているらしい。
+- <strong>JavaScriptでFlashにパラメータ(flashvars)を渡たせない。</strong>
 
 
 ** 選択肢2-1 HTML先頭でdynamic publishing methodを使う。
