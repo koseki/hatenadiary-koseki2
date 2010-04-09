@@ -4,6 +4,7 @@
 - [http://code.google.com/p/swfobject/wiki/documentation:title:bookmark]
 - [http://mtl.recruit.co.jp/blog/2007/10/swfobject_v20.html:title:bookmark]
 - http://swfobject.googlecode.com/svn/trunk/swfobject/src/swfobject.js ソース
+- [http://f-site.org/articles/2009/07/17222054.html:title:bookmark] インタビュー。非常に参考になる。
 
 ** 選択肢
 
@@ -27,9 +28,17 @@ JavaScriptなしでも表示可能なマークアップを目指すやり方。
 -- 二重のオブジェクトタグ。
 -- classid="clsid<!-- -->:D27CDB6E-AE6D-11cf-96B8-444553540000"
 -- &lt;!--[if !IE]&gt;--> が2回登場。
-- 静的ならswfobjectは何をするのか？
+- 静的ならSWFObjectは何をするのか？
 -- マークアップだけでは解決できない問題を解決しているらしい。
-- <strong>JavaScriptでFlashにパラメータ(flashvars)を渡たせない。</strong>
+- アップデートされていないIEで「このコントロールをアクティブ化して使用するにはクリックしてください」のメッセージが表示される場合がある。
+-- [http://images.google.co.jp/images?q=%E3%82%A2%E3%82%AF%E3%83%86%E3%82%A3%E3%83%96%E5%8C%96%E3%81%97%E3%81%A6%E4%BD%BF%E7%94%A8%E3%81%99%E3%82%8B%E3%81%AB%E3%81%AF%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AF%20flash&hl=ja&lr=&um=1&ie=UTF-8&sa=N&tab=wi:title] 画像
+- JavaScriptでFlashにパラメータ(flashvars)を渡せない。JavaScript無しでもFlashは見えてしまう。
+- param要素で静的にflashvarsを渡すことはできる。
+- ドキュメントには、二重のobjectのそれぞれにparamを書かなければならないとある。
+-- NOTE: The nested-objects method requires a double object definition (the outer object targeting Internet Explorer and the inner object targeting all other browsers), so you need to define your object attributes and nested param elements twice. 
+-- 「ノート: ネストしたobjectsメソッドは、二重のobject定義が必要(外側がIE用、中がIE以外用)なので、objectの属性とparam要素は2回必要です」
+-- これは本当？param要素は1回書けば済むように思える。
+-- http://groups.google.com/group/swfobject/browse_thread/thread/8f071313edb37df6 でparamは1回書けばいいんじゃないかという議論がされている。
 
 
 ** 選択肢2-1 HTML先頭でdynamic publishing methodを使う。
