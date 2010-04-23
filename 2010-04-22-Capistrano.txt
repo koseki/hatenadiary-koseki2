@@ -1,0 +1,163 @@
+
+*CapistranoPlain* Capistrano を Rails 以外で使う設定。
+
+
+- [http://www.capify.org/index.php/Capistrano:title:bookmark]
+
+
+Rails と関係ないプロジェクトで Capistrano を使うための設定を作成した。
+
+- http://gist.github.com/374898
+
+
+** 構成
+
+ダウンロードして展開すると以下の階層ができる。
+
+- Capfile
+- config/
+-- deploy.rb
+-- deploy/
+--- staging.rb
+--- live.rb
+
+staging.rbとlive.rbは、multistage用。capistrano-ext が必要。
+
+>||
+sudo gem install capistrano
+sudo gem install capistrano-ext
+||<
+
+
+** デフォルトのタスクを修正
+
+- capistrano-2.5.18/lib/capistrano/recipes/deploy.rb
+
+を見ながら最低限の修正をした。デフォルトだと、deployタスクは下のように呼ばれる。
+
+- default …… deployネームスペースのデフォルトタスク。
+-- update …… トランザクション開始
+--- update_code …… ロールバックの設定。失敗したら全部消す。
+---- strategy.deploy! …… ファイルの配備。リポジトリからチェックアウト。
+---- finalize_update …… パーミッション設定、sharedへのシンボリックリンク作成、キャッシュ更新のためのタイムスタンプ設定。一部不要。
+--- symlink …… currentシンボリックリンクの張り替え。
+-- restart …… railsをリスタートする。不要。
+
+Rails に依存しているのは下の2つのタスク。
+
+- default …… restartは不要。
+- finalize_update …… Rails用のシンボリックリンク作成が不要。tmp,log,public/systemとか。
+
+finalize_updateを上書きして、自前のシンボリックリンク作成処理を追加した。シンボリックリンクの指定を簡単にするため shared_link メソッドを足した。
+
+また、rollbackタスクでもrestartを呼んでいたので修正。restartなしのrollbackはrollback:codeと同一になったので、rollback:codeの方をタスクごと消した。
+
+
+** 不要なタスクの消去
+
+タスクを上書きした時に desc を書かなければタスクは見えなくなる。以下のように使わないタスクを無効・不可視にした。
+
+>|ruby|
+  [
+    # Railsアプリケーション関連のタスクを消します。
+    :restart, :start, :stop, :cold, :migrate, :migrations,
+
+    # setupもとりあえず消します。必要なら自分で定義します。
+    :setup,
+  ].each {|t| task(t){} }
+||<
+
+
+** その他デプロイ時に行いたいタスク
+
+>||
+after "deploy:finalize_update", "your:originaltask"
+||<
+
+のように finalize_update をフックして、追加のタスクを実行するとよい。
+
+
+** ステージ
+
+multistageを使って、
+
+- staging.rb テスト環境の設定
+- live.rb 本番の設定
+
+の2つのステージを作成した。
+
+>||
+set :default_stage, "staging"
+||<
+
+のdefault_stageは設定しなくても動く。省略した場合は cap staging deploy のように毎回どのステージか指定しなければならない。
+
+default_stageの設定の有無は、どちらがいいか迷った。本番にデプロイするコマンドは、見た目がなるべく違った方がいいだろうという理由で、デフォルトにstagingを指定してある。
+
+
+** svnのアカウント
+
+>||
+set :scm, :subversion
+set :scm_username, ENV['SVN_USER'] || ENV['USER']
+set :scm_prefer_prompt, true # 毎回パスワードを入力する設定
+||<
+
+セキュリティというよりは、操作ミスを避ける目的でパスワードプロンプトを出すようにした。チェックアウトするユーザを固定にして、リモートにパスワードを記憶させてもいい気がする。
+
+
+** バナー
+
+live.rbにバナーの表示を足した。stagingと区別が付きにくくて怖かったので。
+
+>||
+puts <<'EOT'
+--------------------------------------------------------------------------------
+                                _ _           _        
+                        __/\__ | (_)_   _____| | __/\__
+                        \    / | | \ \ / / _ \ | \    /
+                        /_  _\ | | |\ V /  __/_| /_  _\
+                          \/   |_|_| \_/ \___(_)   \/  
+
+                               your app name here
+--------------------------------------------------------------------------------
+EOT
+||<
+
+figletのコマンド名が思い出せず苦労した。-cでセンタリング。
+
+>||
+figlet -c '* live! *'
+||<
+
+
+** 設定時のテスト
+
+設定のチェックのために毎回デプロイしてられないので、
+
+>||
+task :xxx do
+  run "uname -a"
+end
+||<
+
+のような簡単なコマンド実行タスクを足すとよい。
+
+
+** 希望
+
+Capistranoのバージョンアップでレシピが変わってしまう可能性はあるが、気にしない。Railsのプロジェクトでもデプロイの動作が変わると困るだろうし、そう簡単には変えないんじゃないだろうか。
+
+
+>||
+set :rails, true
+||<
+
+とか簡単にRails用のデプロイかどうかを切り替えられたらいいのに。
+
+
+
+
+
+
+
