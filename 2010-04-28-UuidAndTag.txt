@@ -1,0 +1,327 @@
+
+*UuidAndTag* 永久に使える自分だけのURIを作る。
+
+
+UUIDやTag URIスキームを使うと、永久不滅の自分専用URIを作れる。
+
+- <code>urn:uuid</code><code>:f81d4fae-7dec-11d0-a765-00a0c91e6bf6</code>
+- <code>tag</code><code>:user@example.com,2010:foo/bar</code>
+
+また、これらのURIをAtomで利用する方法について検討する。
+
+- <code>&lt;atom:link rel="tag</code><code>:nobody@example.com,2010:myself" href="tag</code><code>:nobody@example.com,2010:myself" /&gt;</code> 自己言及リンク
+
+
+** UUID
+
+UUIDにはバリエーションが存在する。以下はRFC4122の話。他は調べてない。マイクロソフトのGUIDがRFC4122に適合しているわけではない(ようだ)。
+
+- [http://tools.ietf.org/html/rfc4122:title:bookmark]
+- [http://en.wikipedia.org/wiki/Universally_Unique_Identifier:title:bookmark]
+- [http://www.famkruithof.net/uuid/uuidgen:title:bookmark] バージョン1と4のUUIDを生成できる。
+- [http://d.hatena.ne.jp/dayflower/20090306/1236314881:title:bookmark] わかりやすい解説記事。Perl。
+- [http://www.postgresql.jp/document/pg841doc/html/uuid-ossp.html:title:bookmark] PostgreSQLのドキュメント
+- [http://www.python.jp/doc/2.5/lib/module-uuid.html:title:bookmark] Pythonのドキュメント
+- [http://pythonjp.sourceforge.jp/dev/library/uuid.html:title:bookmark] Pythonのドキュメント
+- [http://java.sun.com/javase/ja/6/docs/ja/api/java/util/UUID.html:title:bookmark] Javaおなじみの何言ってるのかよくわからないドキュメント 
+-- variantは先頭3ビットなので0xC000..ではなく0xE000..なのでは。
+
+
+*** バリアント
+
+RFC4122では、後方互換のため4種類のバリアントを指定できるようになっている。
+
+- NCS後方互換のための予約
+- RFC4122
+- マイクロソフト後方互換のための予約
+- 将来のための予約
+
+バリアントは 00000000-0000-0000-X000-000000000000 のXの先頭3ビットで区別できる。
+
+- 0xxx NCS (Xの値は0〜7)
+- 10xx RFC4122 (Xの値は8〜B)
+- 110x Microsoft (Xの値はC,D)
+- 111x Reserved for futuer (Xの値はE,F)
+- xは0と1のどちらでもよい。
+
+
+*** バージョン
+
+- version 1,2,3,4,5がある。
+- バージョンによって生成方法が違う。
+- よく使いそうなのはversion 1の時刻と4の乱数。
+- http://tools.ietf.org/html/rfc4122#section-4.1.3
+- バージョンは 00000000-0000-X000-0000-000000000000 のXの数字で区別できる。
+
+
+*** version 1
+
+- 時刻とMACアドレスからユニークなIDを生成する。
+- version 1 UUID は、生成された順にソートできる。
+-- 文字列としてソートはできない。パースする必要がある。
+- MACアドレスが露出するので注意が必要。
+- MACアドレスの代わりに乱数が使える。
+
+MACアドレス(IEEE 802アドレス)の代わりに、乱数を使う方法。
+
+>http://tools.ietf.org/html/rfc4122#section-4.5>
+4.5.  Node IDs that Do Not Identify the Host
+
+This section describes how to generate a version 1 UUID if an IEEE 802 address is not available, or its use is not desired.
+
+A better solution is to obtain a 47-bit cryptographic quality random number and use it as the low 47 bits of the node ID, with the least significant bit of the first octet of the node ID set to one.  This bit is the unicast/multicast bit, which will never be set in IEEE 802 addresses obtained from network cards.
+<<
+
+- version 1では、Node IDにMACアドレスが入る。
+- Node IDは、00000000-0000-0000-0000-XXXXXXXXXXXX のX部分。
+-- UUIDの最後の48ビット。
+- MACアドレスの代わりに乱数を使う場合は、Node IDの先頭8ビットのLSBを1に設定する。
+-- LSBは最後の1ビット。
+-- http://en.wikipedia.org/wiki/Least_significant_bit の図
+-- [http://itpro.nikkeibp.co.jp/article/COLUMN/20070704/276782/:title:bookmark] の図2
+
+PostgreSQLには単純な関数がついている。
+
+>>
+uuid_generate_v1mc()	この関数は、コンピュータの実MACアドレスではなくランダムなマルチキャストMACアドレスを使用して、バージョン1 UUIDを作成します。
+<<
+
+Rubyではもっと複雑な操作が必要だった。後述。
+
+
+*** version 2〜5
+
+- version 2 DCE Security version
+- version 3 MD5を使って名前から生成
+-- DNS,URL,OID,X.500のどれか1つの名前空間を指定できる。
+-- ハッシュをさらにUUIDにする意味は？
+--- どの名前空間に所属しているかの情報が含まれるところがいいのか。
+- version 4 乱数から生成
+- version 5 SHA1を使って名前から生成
+
+
+*** uuidgen コマンド
+
+uuidgenコマンドはversion 4のランダムなUUIDを生成する。
+
+>||
+$ while [ 1 ]; do uuidgen; done
+79AB8F4C-7CA5-4B1F-BD12-8F1E287B11EB
+9D60574D-CCF5-40CF-9FAD-8A00C4CB5BB0
+5D5EF6DF-CE97-4EEF-807B-04A822F237C8
+BFBC674F-5912-43BB-A20B-573E21D45CD4
+E9A7C1BC-B9D0-455E-9FD0-EC1FC8D3B359
+FD7A9B44-AEA7-4FA9-A34D-1CA9892039EF
+050D3865-25A5-4BE7-876F-3FF8E36312A2
+D22F7AB9-B47C-495B-8C62-A6D1B3B79DD2
+39A0D939-EDBD-4312-A61E-F132F1225AD1
+C3D4CB4A-EACC-49C8-9E9D-8813670870B0
+7E423C7C-D739-48D7-A46D-653630DEC720
+9F4F83A4-8756-4BF0-A046-277A63E7E6F2
+#             ^ ここがversion(4)
+#                  ^ ここがvariant(8〜B)
+||<
+
+
+*** Ruby実装
+
+- uuidtools
+-- [http://rubygems.org/gems/uuidtools:title:bookmark]
+-- [http://github.com/sporkmonger/uuidtools:title:bookmark]
+- uuid
+-- [http://rubygems.org/gems/uuid:title:bookmark]
+-- [http://github.com/assaf/uuid:title:bookmark]
+
+uuidtoolsの方がよく使われている。uuidはRFC4122に適合していないのでは？
+
+>|ruby|
+>> require 'uuidtools'
+=> true
+>> 10.times { p UUIDTools::UUID.timestamp_create.to_s }
+"ed97fd62-5363-11df-984e-002332fffecb"
+"ed980316-5363-11df-984e-002332fffecb"
+"ed980924-5363-11df-984e-002332fffecb"
+"ed980d52-5363-11df-984e-002332fffecb"
+"ed9817ac-5363-11df-984e-002332fffecb"
+"ed981c7a-5363-11df-984e-002332fffecb"
+"ed981ff4-5363-11df-984e-002332fffecb"
+"ed983b2e-5363-11df-984e-002332fffecb"
+"ed9841a0-5363-11df-984e-002332fffecb"
+"ed985258-5363-11df-984e-002332fffecb"
+#              ^ ここがversion(1)
+#                   ^ ここがvariant(8〜B)
+
+>> 10.times { p UUIDTools::UUID.random_create.to_s }
+"2545f6f0-4003-4b97-88dd-afec69f0fdfb"
+"afe3ceb0-edd5-4706-aabf-5be2c4ede72f"
+"be92b016-a4e1-4e01-8adb-86f9f58507c8"
+"62da7403-ad34-415d-a2fe-0ae7ac19d4c3"
+"78f94fdc-fd59-4351-806e-8ef959576b15"
+"7bab72b6-fe02-4fbe-a033-913fd4ef9cca"
+"021a4636-168a-4676-b197-36f9626ce5cb"
+"e91640f8-5247-4c62-b724-79097f00fd13"
+"e763d9db-2360-42d8-a50f-03d751636846"
+"319ead2d-84a9-415c-a4f4-1fa3f678b18e"
+#              ^ ここがversion(4)
+#                   ^ ここがvariant(8〜B)
+
+>> require 'uuid'
+=> true
+>> uuid = UUID.new
+=> MAC: 00:23:32:cb:ab:fc  Sequence: 16981
+>> 10.times { p uuid.generate }
+"7c49c760-3592-012d-4255-002332cbabfc"
+"7c49ca40-3592-012d-4255-002332cbabfc"
+"7c49cb70-3592-012d-4255-002332cbabfc"
+"7c49d020-3592-012d-4255-002332cbabfc"
+"7c49d380-3592-012d-4255-002332cbabfc"
+"7c49d4b0-3592-012d-4255-002332cbabfc"
+"7c49d5e0-3592-012d-4255-002332cbabfc"
+"7c49d9f0-3592-012d-4255-002332cbabfc"
+"7c49dd10-3592-012d-4255-002332cbabfc"
+"7c49de40-3592-012d-4255-002332cbabfc"
+#              ^ ここがversionのはずだが……
+#                   ^ ここがvariantのはずだが……
+||<
+
+uuidtoolsは、バージョン1で生成しようとすると、ifconfigコマンドを実行しようとする。MACアドレスを取得するため。これを避けるには、
+
+>|ruby|
+  # MACアドレスに乱数を使う。
+  nodes = SecureRandom.random_bytes(6).unpack("C*")
+  nodes[0] |= 0b00000001
+  nodes = nodes.collect {|node| sprintf("%2.2x", node)}.join(":")
+  UUIDTools::UUID.mac_address = nodes
+||<
+
+を実行しておく。ソースにこういった処理が含まれているにも関わらず、なぜかランダムなMACアドレスで初期化する方法は提供されていないようだった。
+
+以下のスクリプトで、第1オクテットのLSBが1で他が乱数になっているのを確認した。
+
+>|ruby|
+require 'rubygems'
+require 'uuidtools'
+
+100.times do
+  nodes = SecureRandom.random_bytes(6).unpack("C*")
+  nodes[0] |= 0b00000001
+  puts nodes.collect{|node|sprintf("%.8b", node)}.join("-")
+end
+||<
+
+
+*** Python実装
+
+Pythonにはデフォルトでuuidモジュールがついてくる。簡単。
+
+>|python|
+>>> import uuid
+>>> for x in range(10):
+...   print uuid.uuid1()
+...
+f4192dbc-536a-11df-9749-002332cbabfc
+f4193190-536a-11df-9749-002332cbabfc
+f41933ac-536a-11df-9749-002332cbabfc
+f41935b4-536a-11df-9749-002332cbabfc
+f41937b2-536a-11df-9749-002332cbabfc
+f41939a6-536a-11df-9749-002332cbabfc
+f4193b9a-536a-11df-9749-002332cbabfc
+f4193d98-536a-11df-9749-002332cbabfc
+f4193f8c-536a-11df-9749-002332cbabfc
+f4194180-536a-11df-9749-002332cbabfc
+#             ^ ここがversion(1)
+#                  ^ ここがvariant(8〜B)
+
+>>> for x in range(10):
+...   print uuid.uuid4()
+...
+a5693082-6817-4234-980d-6cf54de36b1e
+cd901c49-9352-4f2b-8dc2-57945995c048
+0a2d6ca7-2889-4b62-a610-6123ceecb110
+aaf4e90d-1575-4f92-904f-5d04b4ed8856
+325e01cb-7023-4b6a-ab65-9290bcaf6fd2
+3bd65715-394f-413d-b7dd-e0241d975128
+bbd56669-451f-49e2-9cba-0b3dfa7875e8
+a102e29f-5c80-4b44-86c7-b653769a06a5
+0a9cadab-2ee1-464e-8dc1-8a8b996ee32b
+6bd368f5-b3e5-4042-aa2e-a067001106af
+#             ^ ここがversion(4)
+#                  ^ ここがvariant(8〜B)
+||<
+
+MACアドレスの代わりに乱数を使うには、 uuid.uuid1(uuid._random_getnode()) とできるようだった。
+
+RFCには、希望するならMACアドレスの代わりに乱数を使ってもよいと書いてある。しかし、pythonでもrubyのuuidtoolsでも乱数は使いにくくしてある。理由がわからない。
+
+
+** tag URIスキーム
+
+tag URIスキームはRFC4151で規定されている。
+
+- http://tools.ietf.org/html/rfc4151
+
+UUIDよりも読みやすい。生成も簡単。UUIDの方が便利なのは、使い捨てでよい場合。重複を気にしたくない場合。分散したシステムで大量に発行したい場合。
+
+
+*** 目的
+
+- http://tools.ietf.org/html/rfc4151#section-1
+
++ 識別子が時間と空間に対して一意であり、無尽蔵に作成できること。
++ 人間が読み、書き、入力、記憶しやすいこと。
++ 中心に登録システムが要らないこと。また、発行のコストが無視できること。
++ 識別子はどのようなresolution schemeからも独立していること。(DNSみたいな解決システムが不要という意味？)
+
+
+*** 形式
+
+tag URIは、ドメイン名またはメールアドレスと日付を組み合わせて、自由に使える名前空間を作り出す。
+
+- tag:(ドメイン名・メールアドレス),(日付 YYYY[-MM[-DD]]):(好きな文字列)[#フラグメント]
+
+「好きな文字列」「フラグメント」部分は以下の形式。
+
+- specific      = *( pchar / "/" / "?" )
+- pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
+- unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+- pct-encoded   = "%" HEXDIG HEXDIG
+- sub-delims    = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
+
+クエリーも指定できるが、あまり細かい指定はされていない。
+
+>>
+Note that the "specific" component allows for "query" subcomponents as defined in RFC 3986 [1].  It is RECOMMENDED that specific identifiers should be human-friendly.
+<<
+
+
+*** 日付
+
+- 今日 user@example.com を持っていても、100年後も持っているとは限らない。
+- 一度発行した識別子は永久に有効でなければならない。
+- 100年後も無尽蔵に名前を発行できなければならない。
+
+といった問題を解決するために、日付を指定する。
+
+- 日付は、識別子の作成者がドメイン名やメールアドレスをどの時点で所有していたかを示す。
+- 一日経てば、またゼロから名前を作れる。名前空間が減らない。
+
+
+*** タグの同一性と日付の意味
+
+- タグが同一かどうかは、文字列が完全に一致するかどうかで決まる。
+- 2010と2010-01-01は、同じ日付を意味する。
+- 2010と2010-01-01は、同じタグではない。
+- 大文字小文字の違いも考慮される。
+- ドメインやメールアドレスは小文字推奨。
+
+
+*** tagの発行日に合わせて日付を変えるべき？
+
+- 日付は仕様を決定した時点で固定した方がいい。
+-- 前方一致でタグの種類が判別できないと不便なので。
+- tag:(ドメイン名・メールアドレス),(仕様を決めた日付):(タグの種類):(パラメータ) みたいなのが使いやすいと思う。
+
+
+** Atomでの利用
+
+link要素で使う方法について書く予定。

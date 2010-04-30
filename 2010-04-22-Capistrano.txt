@@ -7,10 +7,74 @@
 
 Rails と関係ないプロジェクトで Capistrano を使うための設定を作成した。
 
+
+** 最小限の設定
+
+SSHでリモートを操作するための、単純な設定の例。ファイル名は Capfile 。
+
+>||
+# sshユーザ名
+set :user, "username"
+
+# サーバをroleでまとめる
+role :abc, "server1.example.com", "user@server2.example.com"
+role :xyz, "server3.example.com"
+
+# 全roleで実行。
+task :ls do
+  run "ls"
+end
+
+# 特定のroleで実行。
+task :myname, :roles => [:xyz] do
+ run "echo " + user
+end
+||<
+
+- サーバが1つだけならroleは1つでよい。
+- 1行目のset :userも指定しなくてもよい。
+-- ユーザ名は、roleのホスト名の前に@を付けて書くことができる。
+-- @がなければset :userで指定したユーザ名がデフォルトになる。
+-- でなければ現在のログインユーザ名がデフォルトになる。
+- taskに:rolesを指定すると、特定のサーバだけ操作できる。
+- setは変数を設定している。タスクで参照できる。
+- set(:time) { Time.now } のようにブロックを設定して遅延評価できる。
+- リモートの標準出力を受け取るstream機能がある。ログのtailを表示したりできる。
+-- stream "tail -f yourapp.log"
+-- http://www.capify.org/index.php/Stream
+- ドキュメント
+-- アクション http://www.capify.org/index.php/Action
+--- runでコマンドを実行する以外にも、ファイルの送受信put、deleteなどができる。
+-- 設定 http://www.capify.org/index.php/Config
+--- 上で使ったset, task, role以外にもいくつかある。
+-- 変数 http://www.capify.org/index.php/Variables
+--- 付属のレシピが使っている変数。
+
+
+** svn updateする
+
+もうちょっと複雑にする。リモートでsvn updateを実行する例。
+
+- http://gist.github.com/376556
+
+>||
+$ sudo gem install capistrano-ext
+||<
+
+でgemを足して、 require 'capistrano/ext/multistage' すると、
+
+>||
+$ cap xxx taskname
+||<
+
+としたときに、config/deploy/xxx.rb を実行前に読み込んでくれるようになる。これを使って、開発用サーバと本番用サーバの設定を切り替える。
+
+
+** デフォルトのタスクを修正する
+
+Capistranoに付いているレシピを利用すると、もっと高度なデプロイ処理が実現できる。
+
 - http://gist.github.com/374898
-
-
-** 構成
 
 ダウンロードして展開すると以下の階層ができる。
 
@@ -29,11 +93,13 @@ sudo gem install capistrano-ext
 ||<
 
 
-** デフォルトのタスクを修正
+*** 修正するタスク
+
+Capfileの load 'deploy' の行でベースのレシピが読み込まれる。
 
 - capistrano-2.5.18/lib/capistrano/recipes/deploy.rb
 
-を見ながら最低限の修正をした。デフォルトだと、deployタスクは下のように呼ばれる。
+このソースを見ながらRailsに依存する部分を修正をした。デフォルトだと、deployタスクは下のように呼ばれる。
 
 - default …… deployネームスペースのデフォルトタスク。
 -- update …… トランザクション開始
@@ -53,7 +119,7 @@ finalize_updateを上書きして、自前のシンボリックリンク作成�
 また、rollbackタスクでもrestartを呼んでいたので修正。restartなしのrollbackはrollback:codeと同一になったので、rollback:codeの方をタスクごと消した。
 
 
-** 不要なタスクの消去
+*** 不要なタスクの消去
 
 タスクを上書きした時に desc を書かなければタスクは見えなくなる。以下のように使わないタスクを無効・不可視にした。
 
@@ -68,7 +134,7 @@ finalize_updateを上書きして、自前のシンボリックリンク作成�
 ||<
 
 
-** その他デプロイ時に行いたいタスク
+*** その他デプロイ時に行いたいタスク
 
 >||
 after "deploy:finalize_update", "your:originaltask"
@@ -77,7 +143,7 @@ after "deploy:finalize_update", "your:originaltask"
 のように finalize_update をフックして、追加のタスクを実行するとよい。
 
 
-** ステージ
+*** ステージ
 
 multistageを使って、
 
@@ -95,7 +161,7 @@ set :default_stage, "staging"
 default_stageの設定の有無は、どちらがいいか迷った。本番にデプロイするコマンドは、見た目がなるべく違った方がいいだろうという理由で、デフォルトにstagingを指定してある。
 
 
-** svnのアカウント
+*** svnのアカウント
 
 >||
 set :scm, :subversion
@@ -106,7 +172,7 @@ set :scm_prefer_prompt, true # 毎回パスワードを入力する設定
 セキュリティというよりは、操作ミスを避ける目的でパスワードプロンプトを出すようにした。チェックアウトするユーザを固定にして、リモートにパスワードを記憶させてもいい気がする。
 
 
-** バナー
+*** バナー
 
 live.rbにバナーの表示を足した。stagingと区別が付きにくくて怖かったので。
 
@@ -131,7 +197,7 @@ figlet -c '* live! *'
 ||<
 
 
-** 設定時のテスト
+*** 設定時のテスト
 
 設定のチェックのために毎回デプロイしてられないので、
 
@@ -144,7 +210,7 @@ end
 のような簡単なコマンド実行タスクを足すとよい。
 
 
-** 希望
+*** 希望
 
 Capistranoのバージョンアップでレシピが変わってしまう可能性はあるが、気にしない。Railsのプロジェクトでもデプロイの動作が変わると困るだろうし、そう簡単には変えないんじゃないだろうか。
 
